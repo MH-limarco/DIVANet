@@ -5,42 +5,46 @@ import torch.nn.functional as F
 from src.module.utils import *
 from src.module.conv import *
 
-__all__ = ["C1", "C2", "C2f", "C3"]
+__all__ = ["Pool_Conv", "C1", "C2", "C2f", "C3"]
 
 class Pool_Conv(nn.Module):
     def __init__(self,
-                 c1,
-                 reduction=16,
-                 layer='Conv2d',
-                 activation='ReLU',
-                 pool=['avg', 'max'],
+                 hidden__channels=16,
                  kernel_size=3,
-                 stride=1,
-                 norm_type=2,
+                 _conv=Conv,
+                 activation='ReLU',
+                 pool=['Avg', 'Max'],
                  ):
+        super(Pool_Conv, self).__init__()
 
-        assert layer in ['Conv2d', 'Linear']
         for p in pool:
-            assert p in ['avg', 'max', 'lp']
+            assert p in ['Avg', 'Max']
 
-        self.flatten = layer == 'Linear'
-        self.pool_types = [getattr(F, p + '_pool2d') for p in pool]
-        self.norm_type = norm_type
+        in_channels = 1
+        self.kernel_size = kernel_size
 
-        reduced_channels = max(c1 // reduction, 1)
-        cnn_args = {'kernel_size' : kernel_size, 'padding' : stride} if layer == 'Conv2d' else {}
+        self.pool_types = [getattr(nn, 'Adaptive' + p + 'Pool3d')((1, None, None)) for p in pool]
 
-        ff_layer = getattr(nn, layer)
         ff_act = Activations(act_name=activation)
 
-        _begin_Sequential = [Flatten()] if self.flatten else []
         _Sequential = (
-                _begin_Sequential +
-                [ff_layer(c1, reduced_channels, **cnn_args),
+                [_conv(in_channels, hidden__channels, self.kernel_size),
                  ff_act(),
-                 ff_layer(reduced_channels, c1, **cnn_args)])
+                 _conv(hidden__channels, in_channels, self.kernel_size)])
 
         self.mlp = nn.Sequential(*_Sequential)
+    def forward(self, x):
+        y = None
+        for pool_type in self.pool_types:
+            pool_x = pool_type(x)
+            out = self.mlp(pool_x)
+
+            if y is None:
+                y = out
+            else:
+                y += out
+
+        return y
 
 
 
@@ -131,8 +135,14 @@ class Bottleneck(nn.Module):
 
 if __name__ == '__main__':
 
-    model = C2(3, 16)
+    model = Pool_Conv(16, 3)
     input_rgb = torch.randn(4, 3, 224, 224)
 
+    print(input_rgb.shape)
+    print(model(input_rgb).shape)
+    input_rgb = torch.randn(4, 2, 224, 224)
+    print(input_rgb.shape)
+    print(model(input_rgb).shape)
+    input_rgb = torch.randn(4, 1, 224, 224)
     print(input_rgb.shape)
     print(model(input_rgb).shape)

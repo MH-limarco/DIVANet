@@ -37,7 +37,7 @@ class base_Dataset_v2(Dataset):
                  label_path,
                  transform=None,
                  channels='RGB',
-                 channels_cut='smooth',
+                 channels_mode='smooth',
                  silence=False,
                  image_path='images',
                  num_worker=-1,
@@ -46,7 +46,7 @@ class base_Dataset_v2(Dataset):
                  ncols=90
                  ):
         assert RAM_lim <= 1
-        assert channels_cut in ['smooth', 'hard']
+        assert channels_mode in ['smooth', 'hard', 'auto']
         channels = list(channels) if isinstance(channels, str) else channels
 
         self.dataset_path = dataset_path
@@ -55,17 +55,19 @@ class base_Dataset_v2(Dataset):
         self.silence = silence
         self.ncols = ncols
 
-        self.channels_cut = channels_cut == 'hard'
+        self.channels_mode = channels_mode == 'hard'
+        if channels_mode != 'auto':
+            channels = [RGB_index.index(c) for c in channels]
+            channels = channels if self.channels_mode else sorted(channels)
+            self.channels_adj = channels != list(range(len(RGB_index)))
 
-        channels = [RGB_index.index(c) for c in channels]
-        channels = channels if self.channels_cut else sorted(channels)
-        self.channels_adj = channels != list(range(len(RGB_index)))
+            mask = torch.ones(len(RGB_index), dtype=torch.bool)
+            mask[channels] = False
+            self.channels = channels if self.channels_mode else mask
+        else:
+            self.channels_adj = False
 
-        mask = torch.ones(len(RGB_index), dtype=torch.bool)
-        mask[channels] = False
-
-        self.channels = channels if self.channels_cut else mask
-        self.num_worker = num_worker if num_worker > 0 else cpu_count(logical = True)
+        self.num_worker = num_worker if num_worker > 0 else cpu_count(logical=True)
         self.RAM = RAM if RAM == False else 'auto'
         self.RAM_lim = RAM_lim
 
@@ -173,7 +175,7 @@ class MiniImageNetDataset:
                  label_path,
                  transform=transforms,
                  channels='RGB',
-                 channels_cut='smooth',
+                 channels_mode='smooth',
                  batch_size=32,
                  shuffle=False,
                  pin_memory=False,
@@ -187,7 +189,7 @@ class MiniImageNetDataset:
                  ):
         assert RAM_lim <= 1
         assert 0 <= cutmix_p <= 1
-        assert channels_cut in ['smooth', 'hard']
+        assert channels_mode in ['smooth', 'hard', 'auto']
 
         self.dataset_path = dataset_path
         self.label_path = label_path
@@ -209,7 +211,7 @@ class MiniImageNetDataset:
                                        label_path,
                                        transform,
                                        channels,
-                                       channels_cut,
+                                       channels_mode,
                                        silence,
                                        image_path,
                                        num_worker,

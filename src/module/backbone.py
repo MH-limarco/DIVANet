@@ -51,10 +51,10 @@ class yaml_model(nn.Module):
         return out[-1]
 
     @staticmethod
-    def parse_model(_dict, _input_channels): # model_dict, input_channels(3)
+    def parse_model(_dict, _input_channels, input_pool='Pool_Conv'): # model_dict, input_channels(3)
 
         max_channels = float("inf")
-        num_class, act, scales = (_dict.get(x) for x in ("nc", "activation", "scales"))
+        num_class, act, scales, c1_pool = (_dict.get(x) for x in ("nc", "activation", "scales","c1_pool"))
 
         if scales:
             scale = _dict.get("scale")
@@ -73,6 +73,16 @@ class yaml_model(nn.Module):
 
         ch = [_input_channels]
         layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
+
+        if _input_channels == 'auto':
+            ch = [1]
+            input_pool = globals()[input_pool]
+            m_seq = input_pool(*[16, 3, Conv, act, ['Avg', 'Max']])
+
+            t = str(input_pool)[8:-2].replace("__main__.", "")
+            input_pool.np = sum(x.numel() for x in m_seq.parameters())  # number params
+            m_seq.i, m_seq.f, m_seq.type = -1, [-1], t
+            layers.append(m_seq)
 
         full_dict = _dict["backbone"]
         if _dict.get("head"):

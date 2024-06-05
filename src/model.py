@@ -32,7 +32,7 @@ class base_CV(nn.Module):
 
                  size=224,
                  channels='RGB',
-                 channels_cut='smooth',
+                 channels_mode='smooth',
                  lr=0.005,
                  batch_size=16,
                  device=None,
@@ -53,15 +53,15 @@ class base_CV(nn.Module):
                  ):
         super().__init__()
         assert type(channels) in [list, str]
-        assert channels_cut in ['smooth', 'hard']
+        assert channels_mode in ['smooth', 'hard', 'auto']
         channels = channels.replace(' ','')
-        assert 1 <= len(channels) <=3
+        assert 1 <= len(channels) <=3 or channels == 'auto'
 
         self.dataset_path = dataset_path
         self.silence = silence
         self.channels = channels
-        self.channels_cut = channels_cut
-        self.in_channels = len(self.channels) if channels_cut == 'hard' else 3
+        self.channels_mode = channels_mode
+        self.in_channels = len(self.channels) if channels_mode == 'hard' else 3
 
 
         log_filename="all_log.log"
@@ -115,11 +115,11 @@ class base_CV(nn.Module):
 
     def _build_dataset(self):
         self.train_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'train.txt',
-                                                 transform=self.transform, channels=self.channels, channels_cut=self.channels_cut, silence=self.silence, shuffle=True, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size, cutmix_p=self.cutmix_p)
+                                                 transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=self.silence, shuffle=True, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size, cutmix_p=self.cutmix_p)
         self.test_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'test.txt',
-                                                transform=self.transform, channels=self.channels, channels_cut=self.channels_cut, silence=True, shuffle=False, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
+                                                transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
         self.val_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'val.txt',
-                                               transform=self.transform, channels=self.channels, channels_cut=self.channels_cut, silence=True, shuffle=False, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
+                                               transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
 
         self._build_loader()
 
@@ -277,7 +277,7 @@ class base_CV(nn.Module):
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.epochs, eta_min=self.lr/25, last_epoch=-1)
         self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
 
-        logging.warning(f'{block_name}: Start training...\ntrain epochs - {epochs}')
+        logging.warning(f'{block_name}: Start training...\ntrain epochs - {epochs}\ninput channels - {self.input_c}')
         logging.warning(self.setup_col_string())
         logging.warning(self.setup_string())
 
@@ -390,7 +390,16 @@ class Torch_CV(base_CV):
         assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
 
         self.model = torch_model(self.model_name, self.pretrained)
-        self._model_resize(in_channels=self.in_channels)
+        if self.channels_mode != 'auto':
+            self._model_resize(in_channels=self.in_channels)
+            self.input_c = len(self.channels)
+
+        else:
+            self._model_resize(in_channels=1)
+            m = Pool_Conv()
+            self.model = nn.Sequential(*[m, self.model]).to(self.device)
+            self.input_c = 'auto'
+        #self._model_resize(in_channels=self.in_channels)
 
 class Custom_CV(base_CV):
     def __init__(self, yaml, *args, **kwargs):
@@ -399,15 +408,22 @@ class Custom_CV(base_CV):
         assert len(yaml.split('.yaml')) == 2
 
         self.yaml = yaml.split('.yaml')[0]
-        print(self.yaml)
 
     def _read_model(self):
-        assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
+        #assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
         self.yaml = self._read_yaml(self.yaml)
         self.yaml['nc'] = self.train_Manager.class_num
+        intput_channels = len(self.channels) if self.channels_mode != 'auto' else self.channels_mode
 
-        self.model = yaml_model(self.yaml, len(self.channels), self.device)
-        self._model_resize(in_channels=self.in_channels)
+        self.model = yaml_model(self.yaml, intput_channels, self.device)
+
+        if self.channels_mode != 'auto':
+            self._model_resize(in_channels=self.in_channels)
+            self.input_c = len(self.channels)
+
+        else:
+            self._fc_layer_resize()
+            self.input_c = 'auto'
 
 
     @staticmethod
@@ -415,10 +431,6 @@ class Custom_CV(base_CV):
         logging.warning(f'{block_name}: yaml Path - {yaml_path}')
         with open(f'cfg/{yaml_path}.yaml', 'r', encoding="utf-8") as stream:
             return yaml.safe_load(stream)
-
-
-
-
 
 #if __name__ == "__main__":
 #    FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'
