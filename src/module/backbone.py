@@ -49,7 +49,6 @@ class yaml_model(nn.Module):
             out.update(out.fromkeys(save_i, module([out[k].to(self.device) for k in module.f] if len(module.f) > 1 else out[module.f[0]].to(self.device))))
         return out[-1]
 
-
     @staticmethod
     def parse_model(_dict, _input_channels): # model_dict, input_channels(3)
 

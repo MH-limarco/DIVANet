@@ -348,7 +348,7 @@ class base_CV(nn.Module):
     def train_string(self, epoch, loss=np.inf):
         _col_name = (
             f"{epoch}/{self.epochs}",
-            f"{round(torch.cuda.memory_allocated()/1000000000, 2)}G",
+            f"{round(torch.cuda.memory_allocated(device = self.device)/1000000000, 2) if self.device_use == 'cuda' else 0.0}G",
             f"{round(loss, 3) if loss != np.inf else loss}",
             f"{self.size}",
         )

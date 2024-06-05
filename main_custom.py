@@ -2,12 +2,12 @@ from src import *
 
 
 if __name__ == '__main__':
-    custom_model = Custom_CV('resnet34.yaml',
+    custom_model = Custom_CV('test123.yaml',
                            'dataset',
                            silence=False,
                            channels='RG',
                            channels_cut='hard',
-                           cuda_idx=0,
+                           cuda_idx=1,
                            batch_size=64,
                            RAM=False,
                            amp=True,
