@@ -51,11 +51,13 @@ class Pool_Conv(nn.Module):
 class C1(nn.Module):
     """CSP Bottleneck with 1 convolution."""
 
-    def __init__(self, c1, c2, n=1):
+    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, replace_mode=0):
         """Initializes the CSP Bottleneck with configurations for 1 convolution with arguments ch_in, ch_out, number."""
         super().__init__()
-        self.cv1 = Conv(c1, c2, 1, 1)
-        self.m = nn.Sequential(*(Conv(c2, c2, 3) for _ in range(n)))
+        assert 0 <= replace_mode <= 2
+        run_conv = _conv if replace_mode >= 2 else Conv
+        self.cv1 = run_conv(c1, c2, 1, 1)
+        self.m = nn.Sequential(*(run_conv(c2, c2, 3) for _ in range(n)))
 
     def forward(self, x):
         """Applies cross-convolutions to input in the C3 module."""
@@ -64,15 +66,18 @@ class C1(nn.Module):
 
 
 class C2(nn.Module):
-    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, replace_mode=0, g=1, e=0.5):
         """Initializes the CSP Bottleneck with 2 convolutions module with arguments ch_in, ch_out, number, shortcut,
         groups, expansion.
         """
         super().__init__()
+        assert 0 <= replace_mode <= 2
+        run_conv = _conv if replace_mode >= 2 else Conv
+
         self.c = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
-        self.cv2 = Conv(2 * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.Sequential(*(Bottleneck(self.c, self.c, _conv, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n)))
+        self.cv1 = run_conv(c1, 2 * self.c, 1, 1)
+        self.cv2 = run_conv(2 * self.c, c2, 1)  # optional act=FReLU(c2)
+        self.m = nn.Sequential(Bottleneck(self.c, self.c, _conv, replace_mode, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
 
     def forward(self, x):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
@@ -81,15 +86,18 @@ class C2(nn.Module):
 
 class C2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
-    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=False, g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=False, replace_mode=0, g=1, e=0.5):
         """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
         expansion.
         """
         super().__init__()
+        assert 0 <= replace_mode <= 2
+        run_conv = _conv if replace_mode >= 2 else Conv
+
         self.c = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, 2 * self.c, 1, 1)
-        self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.ModuleList(Bottleneck(self.c, self.c, _conv, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
+        self.cv1 = run_conv(c1, 2 * self.c, 1, 1)
+        self.cv2 = run_conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
+        self.m = nn.ModuleList(Bottleneck(self.c, self.c, _conv, replace_mode, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
 
     def forward(self, x):
         """Forward pass through C2f layer."""
@@ -98,14 +106,17 @@ class C2f(nn.Module):
         return self.cv2(torch.cat(y, 1))
 
 class C3(nn.Module):
-    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, replace_mode=0, g=1, e=0.5):
         """Initialize the CSP Bottleneck with given channels, number, shortcut, groups, and expansion values."""
         super().__init__()
+        assert 0 <= replace_mode <= 2
+        run_conv = _conv if replace_mode >= 2 else Conv
+
         c_ = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, c_, 1, 1)
-        self.cv2 = Conv(c1, c_, 1, 1)
-        self.cv3 = Conv(2 * c_, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.Sequential(*(Bottleneck(c_, c_, _conv, shortcut, g, k=((1, 1), (3, 3)), e=1.0) for _ in range(n)))
+        self.cv1 = run_conv(c1, c_, 1, 1)
+        self.cv2 = run_conv(c1, c_, 1, 1)
+        self.cv3 = run_conv(2 * c_, c2, 1)  # optional act=FReLU(c2)
+        self.m = nn.Sequential(Bottleneck(c_, c_, _conv, replace_mode, shortcut, g, k=((1, 1), (3, 3)), e=1.0) for _ in range(n))
 
     def forward(self, x):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
@@ -113,17 +124,25 @@ class C3(nn.Module):
 
 class Bottleneck(nn.Module):
     """Standard bottleneck."""
-    def __init__(self, c1, c2, _conv, shortcut=True, g=1, k=(3, 3), e=0.5):
+    def __init__(self, c1, c2, _conv, replace_mode=0, shortcut=True, g=1, k=(3, 3), e=0.5):
         """Initializes a bottleneck module with given input/output channels, shortcut option, group, kernels, and
         expansion.
         """
         super().__init__()
+        assert 0 <= replace_mode <= 2
+        run_conv1 = _conv if replace_mode >= 1 else Conv
+        run_conv2 = _conv if replace_mode >= 0 else Conv
+
         c_ = int(c2 * e)  # hidden channels
-        self.cv1 = Conv(c1, c_, k[0], 1)
         try:
-            self.cv2 = _conv(c_, c2, k[1], 1, groups=g)
+            self.cv1 = run_conv1(c_, c2, k[1], 1, groups=g)
         except:
-            self.cv2 = _conv(c_, c2, k[1])
+            self.cv1 = run_conv1(c_, c2, k[1])
+
+        try:
+            self.cv2 = run_conv2(c_, c2, k[1], 1, groups=g)
+        except:
+            self.cv2 = run_conv2(c_, c2, k[1])
 
         self.add = shortcut and c1 == c2
 

@@ -60,7 +60,7 @@ class yaml_model(nn.Module):
             scale = _dict.get("scale")
             if not scale:
                 scale = tuple(scales.keys())[0]
-                print(f"Assuming scale='{scale}'")
+            logging.info(f"{block_name}: Assuming scale='{scale}'")
                 # LOGGER.warning(f"WARNING ⚠️ no model scale passed. Assuming scale='{scale}'.")
             depth, width, max_channels = scales[scale]
 

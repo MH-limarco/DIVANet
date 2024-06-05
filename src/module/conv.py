@@ -11,7 +11,7 @@ try:
 except ImportError as e:
     pass
 
-__all__ = ["Conv", "DCNV4", "MLPLayer", "Concat"]
+__all__ = ["Conv", "DCNv4", "MLPLayer", "Concat"]
 
 class Conv(nn.Module):
     default_act = Activations('SiLU')(inplace=True)
@@ -39,7 +39,7 @@ class Conv(nn.Module):
         return self.activation(self.bn(self.conv(x)))
 
 
-class DCNV4(nn.Module):
+class DCNv4(nn.Module):
     def __init__(self,
                  in_planes,
                  out_planes,
@@ -50,13 +50,14 @@ class DCNV4(nn.Module):
                  groups=1,
                  activation=True,
                  bn=True,
-                 bias=False
                  ):
         super().__init__()
 
         if in_planes != out_planes:
             self.stem_conv = Conv(in_planes, out_planes, kernel_size=1)
-        self.dcnv4 = dcnv4(out_planes,
+
+        kernel_size = kernel_size[0] if isinstance(kernel_size, (list, tuple)) else kernel_size
+        self._conv = dcnv4(out_planes,
                            kernel_size=kernel_size,
                            stride=stride,
                            pad=autopad(kernel_size, padding, dilation),
@@ -70,7 +71,7 @@ class DCNV4(nn.Module):
         if hasattr(self, 'stem_conv'):
             x = self.stem_conv(x)
 
-        x = self.dcnv4(x, (x.size(2), x.size(3)))
+        x = self._conv(x, (x.size(2), x.size(3)))
         x = self.activation(self.bn(x))
         return x
 
@@ -120,8 +121,8 @@ class Concat(nn.Module):
 
 if __name__ == "__main__":
 
-    model = Conv(3, 16, 3)
-    input_rgb = torch.randn(4, 3, 224, 224)
+    model = dcnv4(4, 16, 3).cuda()
+    input_rgb = torch.randn(4, 4, 224, 224).cuda()
 
     print(input_rgb.shape)
     print(model(input_rgb).shape)

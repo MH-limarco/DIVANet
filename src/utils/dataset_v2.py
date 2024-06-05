@@ -68,7 +68,7 @@ class base_Dataset_v2(Dataset):
             self.channels_adj = False
 
         self.num_worker = num_worker if num_worker > 0 else cpu_count(logical=True)
-        self.RAM = RAM if RAM == False else 'auto'
+        self.RAM = RAM if not RAM else 'auto'
         self.RAM_lim = RAM_lim
 
         self.transform = _transforms if transform == None else transform
@@ -91,10 +91,10 @@ class base_Dataset_v2(Dataset):
     def _RAM_check(self):
         mem_lim = (self.RAM_lim * self.mem.total) / (1024 ** 3)
         self.logging_table(datset_table_col, [self.num_worker, mem_lim], table_name='Datset-setting')
-
-        #logging.debug(f"{block_name}: RAM Temporary - {self.RAM}")
         if self.RAM == 'auto':
-            logging.debug(f"{block_name}: RAM Checking...")
+            if not self.silence:
+                logging.debug(f"{block_name}: {self.label_path} RAM Temporary - {self.RAM}")
+                logging.debug(f"{block_name}: {self.label_path} RAM auto Checking...")
             size = 0
             for root, dirs, files in walk(path.join(self.dataset_path, self.image_path)):
                 size += sum([path.getsize(path.join(root, name)) for name in files])
@@ -107,7 +107,7 @@ class base_Dataset_v2(Dataset):
             self.RAM = True if mem_lim < file_size + self.mem.used else False
 
         if not self.silence:
-            logging.info(f"{block_name}: RAM Temporary - {self.RAM}")
+            logging.info(f"{block_name}: {self.label_path} RAM Temporary - {self.RAM}")
 
     def _get_class_num(self):
         self.class_num = len(np.unique(np.array(self.img_label)[:, 1]))
@@ -126,6 +126,7 @@ class base_Dataset_v2(Dataset):
                 img = img[self.channels, :, :]
             else:
                 img[self.channels] = 0
+
         return img, int(label)
 
     def _pre_loading(self):
@@ -198,7 +199,7 @@ class MiniImageNetDataset:
         self.ncols = ncols
 
         self.num_worker = num_worker if num_worker > 0 else cpu_count(logical=False)
-        self.RAM = RAM if RAM == False else 'auto'
+        self.RAM = RAM if not RAM else 'auto'
         self.RAM_lim = RAM_lim
 
         self.batch_size = batch_size
