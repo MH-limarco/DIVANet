@@ -2,7 +2,7 @@ from src import *
 
 
 if __name__ == '__main__':
-    custom_model = Custom_CV('test123.yaml',
+    custom_model = Custom_CV('C2f-CBAM.yaml',
                            'dataset',
                            silence=False,
                            channels='RG',

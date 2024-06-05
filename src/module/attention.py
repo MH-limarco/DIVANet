@@ -31,7 +31,7 @@ class ChannelAttention(nn.Module):
         cnn_args = {'kernel_size' : kernel_size, 'padding' : stride} if layer == 'Conv2d' else {}
 
         ff_layer = getattr(nn, layer)
-        ff_act = Activations(act_name=activation)()
+        ff_act = Activations(act_name=activation)
 
         _begin_Sequential = [Flatten()] if self.flatten else []
         _Sequential = (

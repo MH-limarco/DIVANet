@@ -63,7 +63,17 @@ class base_CV(nn.Module):
         self.channels_cut = channels_cut
         self.in_channels = len(self.channels) if channels_cut == 'hard' else 3
 
-        logging.basicConfig(level=logging.WARNING if silence else logging.DEBUG,format=FORMAT, datefmt='%Y-%m-%d %H:%M')
+
+        log_filename="all_log.log"
+        logging.basicConfig(
+            level=logging.WARNING if silence else logging.DEBUG,
+            format=FORMAT,
+            datefmt='%Y-%m-%d %H:%M',
+            handlers=[
+                logging.FileHandler(log_filename),  # 添加 FileHandler 寫入檔案
+                logging.StreamHandler()             # 保持控制台輸出
+            ]
+        )
         test_data(self.dataset_path)
 
         self.lr = lr

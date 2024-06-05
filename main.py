@@ -16,5 +16,5 @@ if __name__ == '__main__':
                            pretrained=False,
                            )
 
-    torch_model.train(epochs=200)
+    torch_model.train(epochs=10)
 

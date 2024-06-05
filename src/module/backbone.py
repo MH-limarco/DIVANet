@@ -7,6 +7,7 @@ import contextlib, inspect, yaml, ast, re
 from src.module.block import *
 from src.module.conv import *
 from src.module.utils import *
+from src.module.attention import *
 from src.module.head import *
 
 block_name = 'backbone'
@@ -97,9 +98,11 @@ class yaml_model(nn.Module):
                 if isinstance(a, str):
                     with contextlib.suppress(ValueError):
                         args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
-
-            if m not in [nn.BatchNorm2d, Concat, torch_model]:
+            if m not in [nn.BatchNorm2d, Concat, torch_model,
+                         ChannelAttention, SpatialAttention, CBAM
+                         ]:
                 c1, c2 = ch[f], args[0]
+
                 if c2 != 'nc':  # if c2 not equal to number of classes (i.e. for Classify() output)
                     c2 = make_divisible(min(c2, max_channels) * width, 8)
 
@@ -112,7 +115,9 @@ class yaml_model(nn.Module):
                     args.insert(_arg.index('n') - 1 if 'self' in _arg else 0, n)  # number of repeats
                     args.insert(_arg.index('_conv') - 1 if 'self' in _arg else 0, _conv)
                     n = 1
-                    print(_conv)
+            elif m in [ChannelAttention, SpatialAttention, CBAM]:
+                c2 = ch[f]
+                args = [c1, *args]
 
             elif m is nn.BatchNorm2d:
                 args = [ch[f]]
