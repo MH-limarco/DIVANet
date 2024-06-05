@@ -43,5 +43,8 @@ def download_data(data_name, _http):
     with zipfile.ZipFile(_download_name, 'r') as zip_ref:
         zip_ref.extractall(f'dataset//{data_name}')
 
-    subprocess.call([command[1], _download_name])
+    if os.name == 'posix':
+        subprocess.call([command[1], _download_name])
+    else:
+        subprocess.call(['cmd', '/c', command[1], f'{_download_name}'])
     logging.info(f'{block_name}: Download done')

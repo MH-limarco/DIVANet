@@ -9,7 +9,7 @@ if __name__ == '__main__':
                            channels_mode='auto',
                            cuda_idx=1,
                            batch_size=64,
-                           RAM=False,
+                           RAM=True,
                            amp=True,
                            ema=True,
                            cutmix_p=1,
