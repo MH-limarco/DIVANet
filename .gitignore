@@ -1,2 +1,4 @@
 **/dataset/dataset/
 .idea/*
+save.pt
+all_log.log
