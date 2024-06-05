@@ -2,13 +2,61 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.module.utils import *
 from src.module.conv import *
 
 __all__ = ["C1", "C2", "C2f", "C3"]
+
+class Pool_Conv(nn.Module):
+    def __init__(self,
+                 c1,
+                 reduction=16,
+                 layer='Conv2d',
+                 activation='ReLU',
+                 pool=['avg', 'max'],
+                 kernel_size=3,
+                 stride=1,
+                 norm_type=2,
+                 ):
+
+        assert layer in ['Conv2d', 'Linear']
+        for p in pool:
+            assert p in ['avg', 'max', 'lp']
+
+        self.flatten = layer == 'Linear'
+        self.pool_types = [getattr(F, p + '_pool2d') for p in pool]
+        self.norm_type = norm_type
+
+        reduced_channels = max(c1 // reduction, 1)
+        cnn_args = {'kernel_size' : kernel_size, 'padding' : stride} if layer == 'Conv2d' else {}
+
+        ff_layer = getattr(nn, layer)
+        ff_act = Activations(act_name=activation)
+
+        _begin_Sequential = [Flatten()] if self.flatten else []
+        _Sequential = (
+                _begin_Sequential +
+                [ff_layer(c1, reduced_channels, **cnn_args),
+                 ff_act(),
+                 ff_layer(reduced_channels, c1, **cnn_args)])
+
+        self.mlp = nn.Sequential(*_Sequential)
+
+
+
 class C1(nn.Module):
-    def __init__(self):
+    """CSP Bottleneck with 1 convolution."""
+
+    def __init__(self, c1, c2, n=1):
+        """Initializes the CSP Bottleneck with configurations for 1 convolution with arguments ch_in, ch_out, number."""
         super().__init__()
-        pass
+        self.cv1 = Conv(c1, c2, 1, 1)
+        self.m = nn.Sequential(*(Conv(c2, c2, 3) for _ in range(n)))
+
+    def forward(self, x):
+        """Applies cross-convolutions to input in the C3 module."""
+        y = self.cv1(x)
+        return self.m(y) + y
 
 
 class C2(nn.Module):

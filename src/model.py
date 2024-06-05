@@ -277,7 +277,7 @@ class base_CV(nn.Module):
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.epochs, eta_min=self.lr/25, last_epoch=-1)
         self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
 
-        logging.warning(f'{block_name}: Start training...')
+        logging.warning(f'{block_name}: Start training...\ntrain epochs - {epochs}')
         logging.warning(self.setup_col_string())
         logging.warning(self.setup_string())
 
@@ -296,7 +296,7 @@ class base_CV(nn.Module):
             if self.early_count >= self.early_lim:
                 break
 
-        logging.WARNING(f'{block_name}: Training ended - Best_epoch: {self.best_epoch}')
+        logging.warning(f'{block_name}: Training ended - Best_epoch: {self.best_epoch}')
         self.valid()
 
     def valid(self):

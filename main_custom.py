@@ -16,4 +16,4 @@ if __name__ == '__main__':
                            label_smoothing=0.1,
                            )
 
-    custom_model.train(epochs=200)
+    custom_model.train(epochs=2)
