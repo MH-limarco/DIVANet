@@ -236,7 +236,7 @@ class MiniImageNetDataset:
                                      self.batch_size,
                                      shuffle=self.shuffle,
                                      pin_memory=self.pin_memory,
-                                     num_workers=min(self.num_worker, 6),
+                                     num_workers=min(self.num_worker, 4 if not self.RAM else 0),
                                      collate_fn=self.collate_fn
                                      )
 
@@ -251,14 +251,15 @@ if __name__ == '__main__':
     FORMAT = '%(message)s'
     logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt='%Y-%m-%d %H:%M')
 
-    DataManager = MiniImageNetDataset('../../dataset/dataset', 'train.txt', pin_memory=True, silence=False, cutmix_p=1,num_worker=1)
-    aa = DataManager.DataLoader
-    for img, _label in tqdm(aa):
+    DataManager = MiniImageNetDataset('../../dataset/dataset', 'train.txt', RAM=False, pin_memory=True, silence=False)
+    DataManager.build_loader()
+    for img, _label in tqdm(DataManager.DataLoader):
         pass
     print(torch.max(_label), torch.sum(_label,axis=1), img.shape)
-    DataManager.close_cutmix()
 
-    for img, _label in tqdm(aa):
+    DataManager2 = MiniImageNetDataset('../../dataset/dataset', 'train.txt', RAM='auto', pin_memory=True, silence=False)
+    DataManager2.build_loader()
+    for img, _label in tqdm(DataManager2.DataLoader):
         pass
     print(torch.max(_label), torch.sum(_label,axis=1), img.shape, _label)
 

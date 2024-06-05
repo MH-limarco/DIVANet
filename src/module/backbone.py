@@ -97,7 +97,8 @@ class yaml_model(nn.Module):
             if len(m) == 2:
                 if 'KA' in m[1] and 'NConv' in m[1]:
                     m, _conv = m[0] + '_KAN', m[1]
-                    print(m)
+                elif m[0] + m[1] in globals():
+                    m, _conv = m[0] + m[1], None
                 else:
                     m, _conv = m[0], m[1]
 
