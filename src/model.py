@@ -9,7 +9,7 @@ from torch.optim.swa_utils import AveragedModel, SWALR
 
 from psutil import cpu_count
 from tqdm.auto import tqdm
-import logging, yaml
+import logging, yaml, time
 import numpy as np
 
 from src.test import *
@@ -307,6 +307,26 @@ class base_CV(nn.Module):
 
     def predict(self, x):
         return self._forward(x)
+
+    def _test_loader(self, loader):
+        s_time = time.monotonic()
+        for _ in tqdm(loader):
+            pass
+        print(f'RAM mode: {self.RAM}\nloader runtime: {time.monotonic() - s_time}')
+
+    def speed_loader(self):
+        _RAM = self.RAM
+        self.RAM = False
+        self._build_dataset()
+        self._test_loader(self.train_loader)
+
+        self.RAM = True
+        self._build_dataset()
+        self._test_loader(self.train_loader)
+
+        self.RAM = _RAM
+
+
 
     def setup_col_string(self):
         """Returns a formatted string of training progress with epoch, GPU memory, loss, instances and size."""
