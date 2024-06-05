@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from src.module.kan_convs import *
 from src.module.utils import *
 from src.module.conv import *
 
-__all__ = ["Pool_Conv", "C1", "C2", "C2f", "C3"]
+__all__ = ["Pool_Conv", "C1", "C2", "C2f", "C3", "C2f_KAN", "C3_KAN"]
 
 class Pool_Conv(nn.Module):
     def __init__(self,
@@ -51,13 +52,11 @@ class Pool_Conv(nn.Module):
 class C1(nn.Module):
     """CSP Bottleneck with 1 convolution."""
 
-    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, replace_mode=0):
+    def __init__(self, c1, c2, n=1):
         """Initializes the CSP Bottleneck with configurations for 1 convolution with arguments ch_in, ch_out, number."""
         super().__init__()
-        assert 0 <= replace_mode <= 2
-        run_conv = _conv if replace_mode >= 2 else Conv
-        self.cv1 = run_conv(c1, c2, 1, 1)
-        self.m = nn.Sequential(*(run_conv(c2, c2, 3) for _ in range(n)))
+        self.cv1 = Conv(c1, c2, 1, 1)
+        self.m = nn.Sequential(*(Conv(c2, c2, 3) for _ in range(n)))
 
     def forward(self, x):
         """Applies cross-convolutions to input in the C3 module."""
@@ -77,7 +76,7 @@ class C2(nn.Module):
         self.c = int(c2 * e)  # hidden channels
         self.cv1 = run_conv(c1, 2 * self.c, 1, 1)
         self.cv2 = run_conv(2 * self.c, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.Sequential(Bottleneck(self.c, self.c, _conv, replace_mode, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
+        self.m = nn.Sequential(*(Bottleneck(self.c, self.c, _conv, replace_mode, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n)))
 
     def forward(self, x):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
@@ -116,11 +115,19 @@ class C3(nn.Module):
         self.cv1 = run_conv(c1, c_, 1, 1)
         self.cv2 = run_conv(c1, c_, 1, 1)
         self.cv3 = run_conv(2 * c_, c2, 1)  # optional act=FReLU(c2)
-        self.m = nn.Sequential(Bottleneck(c_, c_, _conv, replace_mode, shortcut, g, k=((1, 1), (3, 3)), e=1.0) for _ in range(n))
+        self.m = nn.Sequential(*(Bottleneck(c_, c_, _conv, replace_mode, shortcut, g, k=((1, 1), (3, 3)), e=1.0) for _ in range(n)))
 
     def forward(self, x):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
+
+class C3x(C3):
+    """C3 module with cross-convolutions."""
+    def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
+        """Initialize C3TR instance and set default parameters."""
+        super().__init__(c1, c2, n, shortcut, g, e)
+        self.c_ = int(c2 * e)
+        self.m = nn.Sequential(*(Bottleneck(self.c_, self.c_, shortcut, g, k=((1, 3), (3, 1)), e=1) for _ in range(n)))
 
 class Bottleneck(nn.Module):
     """Standard bottleneck."""
@@ -147,8 +154,31 @@ class Bottleneck(nn.Module):
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
-        """'forward()' applies the YOLO FPN to input data."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+class Bottleneck_KAN(nn.Module):
+    def __init__(self, c1, c2, _kan, shortcut=True, g=1, k=(3, 3), e=0.5):
+        super().__init__()
+        c_ = int(c2 * e)  # hidden channels
+
+        self.cv1 = _kan(c1, c_, kernel_size=k[0], padding=k[0] // 2)
+        self.cv2 = _kan(c_, c2, kernel_size=k[1], padding=k[1] // 2)
+
+        self.add = shortcut and c1 == c2
+
+    def forward(self, x):
+        return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
+
+class C2f_KAN(C2f):
+    def __init__(self, c1, c2, n=1, _conv=FastKANConv, shortcut=False, g=1, e=0.5):
+        super().__init__(c1, c2, n, _conv,shortcut, g, e)
+        self.m = nn.ModuleList(Bottleneck_KAN(self.c, self.c, _conv, shortcut, g, k=(3, 3), e=1.0) for _ in range(n))
+
+class C3_KAN(C3):
+    def __init__(self, c1, c2, n=1, _conv=FastKANConv, shortcut=False, g=1, e=0.5):
+        super().__init__(c1, c2, n, _conv, shortcut, g, e)
+        c_ = int(c2 * e)  # hidden channels
+        self.m = nn.Sequential(*(Bottleneck_KAN(c_, c_, _conv, shortcut, g, k=(1, 3), e=1.0) for _ in range(n)))
 
 #class Bottleneck_InternImage(nn.Module)
 

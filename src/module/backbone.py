@@ -4,6 +4,7 @@ import torch
 
 import contextlib, inspect, yaml, ast, re
 
+from src.module.kan_convs import *
 from src.module.block import *
 from src.module.conv import *
 from src.module.utils import *
@@ -94,7 +95,12 @@ class yaml_model(nn.Module):
             assert max([f] if isinstance(f, int) else f) < i
             m = m.split('_')
             if len(m) == 2:
-                m, _conv = m[0], m[1]
+                if 'KA' in m[1] and 'NConv' in m[1]:
+                    m, _conv = m[0] + '_KAN', m[1]
+                    print(m)
+                else:
+                    m, _conv = m[0], m[1]
+
             elif len(m) == 1:
                 m, _conv = m[0], None
             else:
@@ -120,11 +126,12 @@ class yaml_model(nn.Module):
                     c2 = num_class
 
                 args = [c1, c2, *args[1:]]
-                if m in {C1, C2, C2f, C3}:
+                if m in {C1, C2, C2f, C3, C2f_KAN, C3_KAN}:
                     _arg = inspect.getfullargspec(m)[0]
                     args.insert(_arg.index('n') - 1 if 'self' in _arg else 0, n)  # number of repeats
                     args.insert(_arg.index('_conv') - 1 if 'self' in _arg else 0, _conv)
                     n = 1
+
             elif m in [ChannelAttention, SpatialAttention, CBAM]:
                 c2 = ch[f]
                 args = [c1, *args]

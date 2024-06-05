@@ -1,10 +1,8 @@
 from torch import nn
-from torch.nn import functional as F
-from torch.nn.init import xavier_uniform_, constant_
-
-import math, torch
+import torch
 
 from src.module.utils import *
+from src.module.kan_convs import *
 
 try:
     from DCNv4.modules.dcnv4 import DCNv4 as dcnv4
