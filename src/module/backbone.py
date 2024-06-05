@@ -81,7 +81,18 @@ class yaml_model(nn.Module):
 
         for i, (f, n, m, args) in enumerate(full_dict):  # from, number, module, args
             assert max([f] if isinstance(f, int) else f) < i
+            m = m.split('_')
+            if len(m) == 2:
+                m, _conv = m[0], m[1]
+            elif len(m) == 1:
+                m, _conv = m[0], None
+            else:
+                raise ValueError(f'invalid model: {m}')
+
             m = getattr(nn, m[3:]) if m.startswith('nn.') else globals()[m]
+
+            _conv = globals()[_conv] if _conv else Conv
+
             for j, a in enumerate(args):
                 if isinstance(a, str):
                     with contextlib.suppress(ValueError):
@@ -99,8 +110,9 @@ class yaml_model(nn.Module):
                 if m in {C1, C2, C2f, C3}:
                     _arg = inspect.getfullargspec(m)[0]
                     args.insert(_arg.index('n') - 1 if 'self' in _arg else 0, n)  # number of repeats
-                    args.insert(_arg.index('_conv') - 1 if 'self' in _arg else 0, Conv)
+                    args.insert(_arg.index('_conv') - 1 if 'self' in _arg else 0, _conv)
                     n = 1
+                    print(_conv)
 
             elif m is nn.BatchNorm2d:
                 args = [ch[f]]

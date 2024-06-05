@@ -240,8 +240,6 @@ class base_CV(nn.Module):
 
         torch.save(self.state_dict, self.state_PATH)
 
-
-
     def train(self, epochs):
         self._read_model()
 
