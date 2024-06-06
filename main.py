@@ -1,8 +1,11 @@
 from src import *
 
 if __name__ == '__main__':
-    torch_model = Torch_CV('resnet34',
+    torch_model = Torch_CV()
+
+    torch_model.train('resnet34',
                            'dataset',
+                      epochs=10,
                            silence=True,
                            channels='RGB',
                            channels_mode='hard',
@@ -13,8 +16,5 @@ if __name__ == '__main__':
                            ema=True,
                            cutmix_p=1,
                            label_smoothing=0.1,
-                           pretrained=False,
-                           )
-
-    torch_model.train(epochs=10)
+                           pretrained=False)
 

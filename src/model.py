@@ -9,7 +9,7 @@ from torch.optim.swa_utils import AveragedModel, SWALR
 
 from psutil import cpu_count
 from tqdm.auto import tqdm
-import logging, yaml, time
+import logging, yaml, time, inspect
 import numpy as np
 
 from src.test import *
@@ -25,83 +25,9 @@ block_name = 'Model_Manager'
 FORMAT = '%(message)s'
 
 class base_CV(nn.Module):
-    def __init__(self,
-
-                 dataset_path,
-                 silence=True,
-
-                 size=224,
-                 channels='RGB',
-                 channels_mode='smooth',
-                 lr=0.005,
-                 batch_size=16,
-                 device=None,
-                 RAM=True,
-                 pin_memory=False,
-                 amp=True,
-                 ema=True,
-                 ema_start=0,
-                 early=20,
-                 label_smoothing=0.075,
-
-                 transform=None,
-                 cuda_num=-1,
-                 cuda_idx=1,
-                 num_workers=-1,
-                 cutmix_p=0,
-                 seed=123
-                 ):
+    def __init__(self,seed=123):
         super().__init__()
-        assert type(channels) in [list, str]
-        assert channels_mode in ['smooth', 'hard', 'auto']
-        channels = channels.replace(' ','')
-        assert 1 <= len(channels) <=3 or channels == 'auto'
-
-        self.dataset_path = dataset_path
-        self.silence = silence
-        self.channels = channels
-        self.channels_mode = channels_mode
-        self.in_channels = len(self.channels) if channels_mode == 'hard' else 3
-
-
-        log_filename="all_log.log"
-        logging.basicConfig(
-            level=logging.WARNING if silence else logging.DEBUG,
-            format=FORMAT,
-            datefmt='%Y-%m-%d %H:%M',
-            handlers=[
-                logging.FileHandler(log_filename),  # 添加 FileHandler 寫入檔案
-                logging.StreamHandler()             # 保持控制台輸出
-            ]
-        )
-        test_data(self.dataset_path)
-
-        self.lr = lr
-        self.label_smoothing = label_smoothing
-        self.size = size
-        self.ema_use = ema
-        self.amp_use = amp
-        self.ema_start = ema_start
-        self.early_lim = early
-
-        self.transform = transform
-        self.batch_size = batch_size
-        self.cutmix_p = cutmix_p
-        self.RAM = RAM
-        self.pin_memory = pin_memory
-
-        self.device = device
-        self.cuda_idx = cuda_idx
-        self.cuda_num = cuda_num
-
-        self.num_workers = num_workers if num_workers > 0 else cpu_count(logical = True)
         self._set_seed(seed)
-
-        self.state_dict = None
-        self.state_PATH = 'save.pt'
-
-        self._ready_device()
-        self._build_dataset()
 
     def _ready_device(self):
         self.device_use = f'cuda' if torch.cuda.is_available() and self.device != 'cpu' else 'cpu'
@@ -250,7 +176,88 @@ class base_CV(nn.Module):
 
         torch.save(self.state_dict, self.state_PATH)
 
-    def train(self, epochs):
+    def train(self,
+              model_setting,
+              dataset_path,
+              epochs,
+              silence=True,
+
+              size=224,
+              channels='RGB',
+              channels_mode='smooth',
+              lr=0.005,
+
+              batch_size=16,
+              device=None,
+              RAM=True,
+              pin_memory=False,
+              amp=True,
+              ema=True,
+              ema_start=0,
+              early=20,
+              label_smoothing=0.075,
+
+              transform=None,
+              cuda_num=-1,
+              cuda_idx=1,
+              num_workers=-1,
+              cutmix_p=0,
+              pretrained=False,
+              ):
+
+        assert type(channels) in [list, str]
+        assert channels_mode in ['smooth', 'hard', 'auto']
+        channels = channels.replace(' ', '')
+        assert 1 <= len(channels) <= 3 or channels == 'auto'
+        self.pretrained = pretrained
+        self.model_setting = model_setting
+        self.dataset_path = dataset_path
+        self.silence = silence
+        self.channels = channels
+        self.channels_mode = channels_mode
+        self.in_channels = len(self.channels) if channels_mode == 'hard' else 3
+
+        log_filename = "all_log.log"
+        logging.basicConfig(
+            level=logging.WARNING if silence else logging.DEBUG,
+            format=FORMAT,
+            datefmt='%Y-%m-%d %H:%M',
+            handlers=[
+                logging.FileHandler(log_filename),  # 添加 FileHandler 寫入檔案
+                logging.StreamHandler()  # 保持控制台輸出
+            ]
+        )
+        test_data(self.dataset_path)
+
+        self.lr = lr
+        self.label_smoothing = label_smoothing
+        self.size = size
+        self.ema_use = ema
+        self.amp_use = amp
+        self.ema_start = ema_start
+        self.early_lim = early
+
+        self.transform = transform
+        self.batch_size = batch_size
+        self.cutmix_p = cutmix_p
+        self.RAM = RAM
+        self.pin_memory = pin_memory
+
+        self.device = device
+        self.cuda_idx = cuda_idx
+        self.cuda_num = cuda_num
+
+        self.num_workers = num_workers if num_workers > 0 else cpu_count(logical=True)
+
+        self.state_dict = None
+        self.state_PATH = 'save.pt'
+
+        self._ready_device()
+        self._build_dataset()
+
+
+
+
         self._read_model()
 
         self.loss_function = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
@@ -400,16 +407,10 @@ class base_CV(nn.Module):
         torch.cuda.manual_seed_all(seed)
 
 class Torch_CV(base_CV):
-    def __init__(self, model_name, *args, pretrained=None, **kwargs):
-        super(Torch_CV, self).__init__(*args, **kwargs)
-        self.model_name = model_name
-        self.pretrained = pretrained
-
-
     def _read_model(self):
         assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
 
-        self.model = torch_model(self.model_name, self.pretrained)
+        self.model = torch_model(self.model_setting, self.pretrained)
         if self.channels_mode != 'auto':
             self._model_resize(in_channels=self.in_channels)
             self.input_c = len(self.channels)
@@ -422,16 +423,9 @@ class Torch_CV(base_CV):
         #self._model_resize(in_channels=self.in_channels)
 
 class Custom_CV(base_CV):
-    def __init__(self, yaml, *args, **kwargs):
-        super(Custom_CV, self).__init__(*args, **kwargs)
-        assert yaml.endswith('.yaml')
-        assert len(yaml.split('.yaml')) == 2
-
-        self.yaml = yaml.split('.yaml')[0]
-
     def _read_model(self):
-        #assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
-        self.yaml = self._read_yaml(self.yaml)
+        assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
+        self.yaml = self._read_yaml(self.model_setting.split('.yaml')[0])
         self.yaml['nc'] = self.train_Manager.class_num
         intput_channels = len(self.channels) if self.channels_mode != 'auto' else self.channels_mode
 
@@ -452,12 +446,12 @@ class Custom_CV(base_CV):
         with open(f'cfg/{yaml_path}.yaml', 'r', encoding="utf-8") as stream:
             return yaml.safe_load(stream)
 
-#if __name__ == "__main__":
+if __name__ == "__main__":
 #    FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'
 #    FORMAT = '%(message)s'
 #    logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt='%Y-%m-%d %H:%M')
 
-#    model = Custom_CV('test123.yaml', 'dataset', cuda_num=-1, cutmix_p=0)
+    model = base_CV().train()
 #    model.train(70)
 
 
