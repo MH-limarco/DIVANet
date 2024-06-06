@@ -1,3 +1,3 @@
-# AVIS: Adaptive Visual Integration System
+# DIVANet: Dynamic Interactive Visual Architecture Network
 
 Test
