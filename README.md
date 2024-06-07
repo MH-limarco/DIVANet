@@ -99,13 +99,13 @@ You can build your own structure.yaml according to your requirements
 
 You need to customize your configuration file so that the script knows where your architecture files are, where to input and output, and the settings for execution.
 
-|                 |                          example                          | definition                                                                            |
-|:---------------:|:---------------------------------------------------------:|:--------------------------------------------------------------------------------------|
-|      TODO       |                         C2f.yaml                          | Architecture file PATH                                                                |
-|      TODO       |                TODO                                       | TODO                                                                                  |
-|      TODO       |                           TODO                            | TODO                                                                                  |
-|      TODO       |                           TODO                            | TODO                                                                                  |
-|      TODO       |                           TODO                            | TODO                                                                                  |
+|                 | example  | definition                                                                            |
+|:---------------:|:--------:|:--------------------------------------------------------------------------------------|
+|      TODO       | C2f.yaml | Architecture file PATH                                                                |
+|      TODO       |   TODO   | TODO                                                                                  |
+|      TODO       |   TODO   | TODO                                                                                  |
+|      TODO       |   TODO   | TODO                                                                                  |
+|      TODO       |   TODO   | TODO                                                                                  |
 
 </details>
 
