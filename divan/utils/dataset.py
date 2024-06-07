@@ -88,7 +88,7 @@ class MiniImageNetDataset(base_Dataset):
 
 
 if __name__ == '__main__':
-    from src.utils.transformer import *
+    from divan.utils.transformer import *
     train_dataset = MiniImageNetDataset('../../dataset/dataset', 'train.txt', mosaic_p=1)
     test_dataset = MiniImageNetDataset('../../dataset/dataset', 'test.txt')
     val_dataset = MiniImageNetDataset('../../dataset/dataset', 'val.txt')

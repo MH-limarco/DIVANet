@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.module.conv import *
+from divan.module.conv import *
 
 __all__ = ["Classify"]
 class Classify(nn.Module):

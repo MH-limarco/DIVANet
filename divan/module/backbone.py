@@ -4,12 +4,12 @@ import torch
 
 import contextlib, inspect, yaml, ast, re
 
-from src.module.kan_convs import *
-from src.module.block import *
-from src.module.conv import *
-from src.module.utils import *
-from src.module.attention import *
-from src.module.head import *
+from divan.module.kan_convs import *
+from divan.module.block import *
+from divan.module.conv import *
+from divan.module.utils import *
+from divan.module.attention import *
+from divan.module.head import *
 
 block_name = 'backbone'
 

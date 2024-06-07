@@ -1,5 +1,5 @@
-from src.module.utils import *
-from src.module.conv import *
+from divan.module.utils import *
+from divan.module.conv import *
 
 import torch
 import torch.nn as nn

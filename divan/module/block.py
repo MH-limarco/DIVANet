@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.module.kan_convs import *
-from src.module.utils import *
-from src.module.conv import *
+from divan.module.kan_convs import *
+from divan.module.utils import *
+from divan.module.conv import *
 
 __all__ = ["Pool_Conv", "C1", "C2", "C2f", "C3", "C2f_KAN", "C3_KAN"]
 

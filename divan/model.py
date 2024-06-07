@@ -12,9 +12,9 @@ from tqdm.auto import tqdm
 import logging, yaml, time, inspect
 import numpy as np
 
-from src.test import *
-from src.utils import *
-from src.module import *
+from divan.test import *
+from divan.utils import *
+from divan.module import *
 
 
 warnings.simplefilter("ignore")
@@ -24,7 +24,7 @@ memory_used_command = "nvidia-smi --query-gpu=memory.used --format=csv"
 block_name = 'Model_Manager'
 FORMAT = '%(message)s'
 
-class base_CV(nn.Module):
+class base_model(nn.Module):
     def __init__(self,seed=123):
         super().__init__()
         self._set_seed(seed)
@@ -406,7 +406,7 @@ class base_CV(nn.Module):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
-class Torch_CV(base_CV):
+class DIVAN_torch(base_model):
     def _read_model(self):
         assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
 
@@ -422,7 +422,7 @@ class Torch_CV(base_CV):
             self.input_c = 'auto'
         #self._model_resize(in_channels=self.in_channels)
 
-class Custom_CV(base_CV):
+class DIVAN(base_model):
     def _read_model(self):
         assert self.train_Manager.class_num == self.test_Manager.class_num == self.val_Manager.class_num
         self.yaml = self._read_yaml(self.model_setting.split('.yaml')[0])

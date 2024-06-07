@@ -1,8 +1,8 @@
 from torch import nn
 import torch
 
-from src.module.utils import *
-from src.module.kan_convs import *
+from divan.module.utils import *
+from divan.module.kan_convs import *
 
 try:
     from DCNv4.modules.dcnv4 import DCNv4 as dcnv4
