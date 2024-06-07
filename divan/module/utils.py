@@ -2,7 +2,7 @@ from torch import nn
 from torch.nn import functional as F
 import torch, math
 
-__all__ = ["make_divisible", "Flatten", "ChannelPool", "autopad", "Activations"]
+__all__ = ["make_divisible", "Flatten", "ChannelPool", "autopad", "Activations", "inlayer_resize"]
 
 def make_divisible(x, divisor):
     """Returns nearest x divisible by divisor."""
@@ -49,5 +49,25 @@ def Activations(act_name):
         return SwiGLU
     else:
         return getattr(nn, act_name)
+
+
+def inlayer_resize(model, in_channels=3):
+    for name, layer in list(model.named_modules()):
+        if isinstance(layer, nn.Conv2d):
+            out_channels = layer.out_channels
+            kernel_size = layer.kernel_size
+            new_layer = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size)
+
+            name_parts = name.split('.')
+            sub_module = model
+            for part in name_parts[:-1]:
+                sub_module = getattr(sub_module, part)
+            setattr(sub_module, name_parts[-1], new_layer)
+            return model
+
+if __name__ == '__main__':
+    from divan.module.backbone import torch_model
+    model = torch_model('resnet34')
+    print(inlayer_resize(model, 1))
 
 

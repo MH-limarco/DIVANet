@@ -16,7 +16,6 @@ from divan.test import *
 from divan.utils import *
 from divan.module import *
 
-
 warnings.simplefilter("ignore")
 scales_ls = ['n', 's', 'm', 'l', 'x']
 memory_used_command = "nvidia-smi --query-gpu=memory.used --format=csv"
@@ -24,10 +23,34 @@ memory_used_command = "nvidia-smi --query-gpu=memory.used --format=csv"
 block_name = 'Model_Manager'
 FORMAT = '%(message)s'
 
+setting_name = (
+    "device",
+    "amp_use",
+    "scaler_use",
+    "Mosaic_use",
+    "EMA_use",
+    "label_smooth",
+)
+
+train_name = (
+    "Epoch",
+    "GPU_mem",
+    "Train_loss",
+    "Size",
+)
+
+eval_name = (
+    " ",
+    " ",
+    "Eval_loss",
+    "Eval_acc",
+)
+
 class base_model(nn.Module):
     def __init__(self,seed=123):
         super().__init__()
         self._set_seed(seed)
+
 
     def _ready_device(self):
         self.device_use = f'cuda' if torch.cuda.is_available() and self.device != 'cpu' else 'cpu'
@@ -41,11 +64,11 @@ class base_model(nn.Module):
 
     def _build_dataset(self):
         self.train_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'train.txt',
-                                                 transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=self.silence, shuffle=True, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size, cutmix_p=self.cutmix_p)
+                                                 transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=self.silence, shuffle=True, num_workers= self.num_workers, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size, cutmix_p=self.cutmix_p)
         self.test_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'test.txt',
-                                                transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
+                                                transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, num_workers= self.num_workers, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
         self.val_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'val.txt',
-                                               transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
+                                               transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, num_workers= self.num_workers, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
 
         self._build_loader()
 
@@ -58,21 +81,6 @@ class base_model(nn.Module):
         self.train_loader = self.train_Manager.DataLoader
         self.test_loader = self.test_Manager.DataLoader
         self.val_loader = self.val_Manager.DataLoader
-
-    def _model_resize(self, in_channels=3):
-        for name, layer in list(self.model.named_modules()):
-            if isinstance(layer, nn.Conv2d):
-                out_channels = layer.out_channels
-                kernel_size = layer.kernel_size
-                new_layer = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size)
-
-                name_parts = name.split('.')
-                sub_module = self.model
-                for part in name_parts[:-1]:
-                    sub_module = getattr(sub_module, part)
-                setattr(sub_module, name_parts[-1], new_layer)
-                break
-        self._fc_layer_resize()
 
     def _fc_layer_resize(self):
         for name, layer in reversed(list(self.model.named_modules())):
@@ -98,11 +106,12 @@ class base_model(nn.Module):
 
     def _loader(self, dataloader, epoch):
         _training = self.model.training
-        _str_desc = self.train_string if _training else self.eval_string
+        #
+        _desc = self.train_string if _training else self.eval_string
         correct, total = 0, 0
         tol_loss = 0
 
-        pbar = tqdm(dataloader, desc=_str_desc(epoch), ncols=110)
+        pbar = tqdm(dataloader, desc=self.table_with_fix(_desc(epoch)), ncols=110)
         for _idx, (img, label) in enumerate(pbar):
             self.optimizer.zero_grad()
             img = img.float().to(self.device, non_blocking=dataloader.pin_memory)
@@ -110,18 +119,18 @@ class base_model(nn.Module):
             epoch = torch.inf if isinstance(epoch, str) else epoch
             _epoch = 'eval' if epoch == torch.inf else epoch
 
-            with torch.autocast(device_type=self.device_use, enabled=self.amp_use, dtype=torch.float16):
+            with torch.autocast(device_type=self.device_use, enabled=self.amp, dtype=torch.float16):
                 with torch.set_grad_enabled(_training):
-                    module = self.ema if not _training and self.ema_use and epoch >= self.ema_start else self.model
+                    module = self.ema if not _training and self.ema and epoch >= self.ema_start else self.model
                     out = module(img)
                     loss = self.loss_function(out, label)
 
             tol_loss += loss.item()
 
             if _training:
-                pbar.set_description(_str_desc(_epoch, tol_loss / (_idx+1)))
+                pbar.set_description(self.table_with_fix(_desc(_epoch, tol_loss / (_idx+1))))
 
-                if self.amp_use and self.scaler != None:
+                if self.amp and self.scaler != None:
                     self.scaler.scale(loss).backward()
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
@@ -137,7 +146,7 @@ class base_model(nn.Module):
             else:
                 correct += (torch.argmax(label,1) == torch.argmax(out, 1)).sum().item()
                 total += label.size(0)
-                pbar.set_description(_str_desc(_epoch, tol_loss / (_idx + 1), correct/total))
+                pbar.set_description(self.table_with_fix((_desc(_epoch, tol_loss / (_idx + 1), correct/total))))
 
         if _training:
             self.train_loss = tol_loss / (_idx + 1)
@@ -147,27 +156,26 @@ class base_model(nn.Module):
     def _train_step(self, epoch):
         torch.set_grad_enabled(True)
 
-        logging.warning(f'{self.train_col_string()}')
+        logging.warning(f'\n{self.table_with_fix(train_name)}')
         self.model.train()
         self._loader(self.train_loader, epoch)
 
-        logging.warning(f'{self.eval_col_string()}')
+        logging.warning(f'{self.table_with_fix(eval_name)}')
         self.model.eval()
         self._loader(self.val_loader, epoch)
 
-
-
     def _test_step(self):
-        logging.warning(f'{self.train_col_string()}')
+        logging.warning(f'{self.table_with_fix(train_name)}')
         self.model.train()
         self._loader(self.train_loader, 'val')
 
-        logging.warning(f'{self.eval_col_string()}')
+        logging.warning(f'{self.table_with_fix(eval_name)}')
         self.model.eval()
         self._loader(self.test_loader, 'val')
 
-    def _save_state(self):
-        self.state_dict = {'model':self.model.state_dict(),
+    def _save_state(self, epoch):
+        self.state_dict = {'epoch':epoch,
+                           'model':self.model.state_dict(),
                            'optimizer':self.optimizer.state_dict(),
                            'scheduler':self.scheduler.state_dict(),
                            'ema':self.ema.state_dict(),
@@ -176,17 +184,15 @@ class base_model(nn.Module):
 
         torch.save(self.state_dict, self.state_PATH)
 
-    def train(self,
+    def fit(self,
               model_setting,
               dataset_path,
               epochs,
-              silence=True,
-
               size=224,
+              silence=True,
               channels='RGB',
               channels_mode='smooth',
               lr=0.005,
-
               batch_size=16,
               device=None,
               RAM=True,
@@ -196,7 +202,6 @@ class base_model(nn.Module):
               ema_start=0,
               early=20,
               label_smoothing=0.075,
-
               transform=None,
               cuda_num=-1,
               cuda_idx=1,
@@ -204,18 +209,11 @@ class base_model(nn.Module):
               cutmix_p=0,
               pretrained=False,
               ):
-
-        assert type(channels) in [list, str]
-        assert channels_mode in ['smooth', 'hard', 'auto']
+        assert isinstance(channels, str)
         channels = channels.replace(' ', '')
+
+        assert channels_mode in ['smooth', 'hard', 'auto']
         assert 1 <= len(channels) <= 3 or channels == 'auto'
-        self.pretrained = pretrained
-        self.model_setting = model_setting
-        self.dataset_path = dataset_path
-        self.silence = silence
-        self.channels = channels
-        self.channels_mode = channels_mode
-        self.in_channels = len(self.channels) if channels_mode == 'hard' else 3
 
         log_filename = "all_log.log"
         logging.basicConfig(
@@ -227,36 +225,18 @@ class base_model(nn.Module):
                 logging.StreamHandler()  # 保持控制台輸出
             ]
         )
-        test_data(self.dataset_path)
-
-        self.lr = lr
-        self.label_smoothing = label_smoothing
-        self.size = size
-        self.ema_use = ema
-        self.amp_use = amp
-        self.ema_start = ema_start
-        self.early_lim = early
-
-        self.transform = transform
-        self.batch_size = batch_size
-        self.cutmix_p = cutmix_p
-        self.RAM = RAM
-        self.pin_memory = pin_memory
-
-        self.device = device
-        self.cuda_idx = cuda_idx
-        self.cuda_num = cuda_num
-
-        self.num_workers = num_workers if num_workers > 0 else cpu_count(logical=True)
-
+        logging.warning(f"{block_name}: Setting up")
+        self._self_arg()
+        self.in_channels = len(self.channels) if channels_mode == 'hard' else 3
+        self.num_workers = num_workers if num_workers >= 0 else cpu_count(logical=False)
         self.state_dict = None
         self.state_PATH = 'save.pt'
 
+        test_data(self.dataset_path)
         self._ready_device()
         self._build_dataset()
 
-
-
+##
 
         self._read_model()
 
@@ -265,10 +245,11 @@ class base_model(nn.Module):
                                      lr=self.lr,
                                      weight_decay=0)
 
+        self.ema_use = self.ema
         self.ema = AveragedModel(self.model).to(self.device)
 
         try:
-            self.scaler = getattr(torch, self.device_use).amp.GradScaler(enabled=self.amp_use)
+            self.scaler = getattr(torch, self.device_use).amp.GradScaler(enabled=self.amp)
         except:
             self.scaler = None
 
@@ -285,15 +266,27 @@ class base_model(nn.Module):
         self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
 
         logging.warning(f'{block_name}: Start training...\ntrain epochs - {epochs}\ninput channels - {self.input_c}')
-        logging.warning(self.setup_col_string())
-        logging.warning(self.setup_string())
+        setup_value = (f"{self.device}",
+                       f"{self.amp}",
+                       f"{self.scaler != None}",
+                       f"{self.cutmix_p > 0}",
+                       f"{self.ema_use}",
+                       f"{self.label_smoothing}"
+                       )
+
+        logging.warning(logging_table(setting_name,
+                                      setup_value,
+                                      table_name='Training setting',
+                                      it='',
+                                      min_ncol=11
+                                      ))
 
         for epoch in range(1, epochs+1):
             self._train_step(epoch)
 
             if self.eval_loss < self.best_loss:
                 self.best_loss = self.eval_loss
-                self._save_state()
+                self._save_state(epoch)
                 self.early_count = 0
                 self.best_epoch = epoch
 
@@ -310,42 +303,16 @@ class base_model(nn.Module):
         if self.state_dict != None:
             self._test_step()
         else:
-            logging.WARNING(f'{block_name}: Model not training yet')
+            logging.warning(f'{block_name}: Model not training yet')
 
     def predict(self, x):
         return self._forward(x)
 
-    def _test_loader(self, loader):
-        s_time = time.monotonic()
-        for _ in tqdm(loader):
-            pass
-        print(f'RAM mode: {self.RAM}\nloader runtime: {time.monotonic() - s_time}')
+    @staticmethod
+    def table_with_fix(col, fix_len=13):
+        formatted_str = '|'.join(f'{x:^{fix_len}}' for x in col)
+        return f'|{formatted_str}|'
 
-    def speed_loader(self):
-        _RAM = self.RAM
-        self.RAM = False
-        self._build_dataset()
-        self._test_loader(self.train_loader)
-
-        self.RAM = True
-        self._build_dataset()
-        self._test_loader(self.train_loader)
-
-        self.RAM = _RAM
-
-
-
-    def setup_col_string(self):
-        """Returns a formatted string of training progress with epoch, GPU memory, loss, instances and size."""
-        _col_name = (
-            "device",
-            "amp_use",
-            "scaler_use",
-            "Mosaic_use",
-            "EMA_use",
-            "label_smooth_rate",
-        )
-        return ('Training setting:\n'+f"{'|{:^21s}'* (len(_col_name))}|").format(*_col_name)
 
     def train_col_string(self):
         """Returns a formatted string of training progress with epoch, GPU memory, loss, instances and size."""
@@ -367,19 +334,6 @@ class base_model(nn.Module):
         )
         return (f"{'|{:^13s}'* (len(_col_name))}|").format(*_col_name)
 
-    def setup_string(self):
-        """Returns a formatted string of training progress with epoch, GPU memory, loss, instances and size."""
-        _col_name = (
-            f"{self.device}",
-            f"{self.amp_use}",
-            f"{self.scaler != None}",
-            f"{self.cutmix_p > 0}",
-            f"{self.ema_use}",
-            f"{self.label_smoothing}",
-            #f"{self.loss_function.__class__.__name__}",
-        )
-        return (f"{'|{:^21s}'* (len(_col_name))}|").format(*_col_name)
-
     def train_string(self, epoch, loss=np.inf):
         _col_name = (
             f"{epoch}/{self.epochs}",
@@ -388,7 +342,7 @@ class base_model(nn.Module):
             f"{self.size}",
         )
 
-        return (f"{'|{:^13s}'* (len(_col_name))}|").format(*_col_name)
+        return _col_name
 
     def eval_string(self, epoch, loss=np.inf, acc=0):
         _col_name = (
@@ -398,13 +352,24 @@ class base_model(nn.Module):
             f"{round(acc,3)}",
         )
 
-        return (f"{'|{:^13s}'* (len(_col_name))}|").format(*_col_name)
+        return _col_name
+
+    def _self_arg(self):
+        frame_func = inspect.currentframe().f_back
+        args, _, _, values = inspect.getargvalues(frame_func)
+        args.remove('self')
+
+        for arg in args:
+            setattr(self, arg, values[arg])
+
     @staticmethod
     def _set_seed(seed):
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+
 
 class DIVAN_torch(base_model):
     def _read_model(self):
@@ -412,15 +377,17 @@ class DIVAN_torch(base_model):
 
         self.model = torch_model(self.model_setting, self.pretrained)
         if self.channels_mode != 'auto':
-            self._model_resize(in_channels=self.in_channels)
+            self.model = inlayer_resize(self.model, in_channels=self.in_channels)
+            self._fc_layer_resize()
             self.input_c = len(self.channels)
 
         else:
-            self._model_resize(in_channels=1)
             m = Pool_Conv()
+            self.model = inlayer_resize(self.model, in_channels=1)
             self.model = nn.Sequential(*[m, self.model]).to(self.device)
+            self._fc_layer_resize()
             self.input_c = 'auto'
-        #self._model_resize(in_channels=self.in_channels)
+
 
 class DIVAN(base_model):
     def _read_model(self):
@@ -432,13 +399,13 @@ class DIVAN(base_model):
         self.model = yaml_model(self.yaml, intput_channels, self.device)
 
         if self.channels_mode != 'auto':
-            self._model_resize(in_channels=self.in_channels)
+            self.model = inlayer_resize(self.model, self.in_channels)
+            self._fc_layer_resize()
             self.input_c = len(self.channels)
 
         else:
             self._fc_layer_resize()
             self.input_c = 'auto'
-
 
     @staticmethod
     def _read_yaml(yaml_path):
@@ -446,12 +413,12 @@ class DIVAN(base_model):
         with open(f'cfg/{yaml_path}.yaml', 'r', encoding="utf-8") as stream:
             return yaml.safe_load(stream)
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
 #    FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'
 #    FORMAT = '%(message)s'
 #    logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt='%Y-%m-%d %H:%M')
 
-    model = base_CV().train()
+    #model = base_CV().train()
 #    model.train(70)
 
 

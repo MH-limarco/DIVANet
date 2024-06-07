@@ -15,28 +15,34 @@ block_name = 'backbone'
 
 __all__ = ["torch_model", "yaml_model"]
 
-def torch_model(model, pretrained=False):
-    weights = pretrained if pretrained is not False else None
+def torch_model(model, usage_args=False):
+    weights = usage_args if usage_args is not False else None
     if type(model) == str:
         try:
-            _model = getattr(torchvision.models, model)
+            model = getattr(torchvision.models, model)
 
         except:
             logging.warning(f'{block_name}: model not exist')
             return None
 
-    try:
-        model = _model(weights=weights)
+    if not isinstance(usage_args, int):
 
-    except:
-        model = _model(weights='DEFAULT')
-        weights= 'DEFAULT'
-        logging.warning(f'{block_name}: weights not exist')
+        try:
+            model = model(weights=weights)
 
-    finally:
-        logging.info(f'{block_name}: Loading model - {_model.__name__}')
-        logging.info(f'{block_name}: Loading weights - {weights}')
-        return model
+        except:
+            model = model(weights='DEFAULT')
+            weights= 'DEFAULT'
+            logging.warning(f'{block_name}: weights not exist')
+
+        finally:
+            logging.info(f'{block_name}: Loading model - {model.__name__}')
+            logging.info(f'{block_name}: Loading weights - {weights}')
+
+    else:
+        model = inlayer_resize(model(False), usage_args)
+
+    return model
 
 class yaml_model(nn.Module):
     def __init__(self, _dict, _input_channels, device):
@@ -93,7 +99,7 @@ class yaml_model(nn.Module):
 
         for i, (f, n, m, args) in enumerate(full_dict):  # from, number, module, args
             assert max([f] if isinstance(f, int) else f) < i
-            m = m.split('_')
+            m = m.split('_') if m != 'torch_model' else [m]
             if len(m) == 2:
                 if 'KA' in m[1] and 'NConv' in m[1]:
                     m, _conv = m[0] + '_KAN', m[1]
@@ -115,6 +121,7 @@ class yaml_model(nn.Module):
                 if isinstance(a, str):
                     with contextlib.suppress(ValueError):
                         args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
+
             if m not in [nn.BatchNorm2d, Concat, torch_model,
                          ChannelAttention, SpatialAttention, CBAM
                          ]:
@@ -142,6 +149,12 @@ class yaml_model(nn.Module):
 
             elif m is Concat:
                 c2 = sum(ch[x] for x in f)
+
+            elif m is torch_model:
+                if _input_channels == "auto":
+                    _arg = inspect.getfullargspec(m)[0]
+                    args.insert(_arg.index("usage_args"), 1)
+                c2 = ch[f]
 
             else:
                 c2 = ch[f]

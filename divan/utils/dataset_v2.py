@@ -5,10 +5,12 @@ from torch.nn.functional import one_hot
 import torch
 
 from concurrent.futures import ThreadPoolExecutor
-from psutil import virtual_memory, cpu_count
+from psutil import virtual_memory
 from tqdm import tqdm
 from os import path, walk
 import logging
+
+from divan.utils.log import *
 
 if __name__ == '__main__':
     from transformer import *
@@ -40,7 +42,7 @@ class base_Dataset_v2(Dataset):
                  channels_mode='smooth',
                  silence=False,
                  image_path='images',
-                 num_worker=-1,
+                 num_workers=-1,
                  RAM='auto',
                  RAM_lim=0.9,
                  ncols=90
@@ -67,7 +69,7 @@ class base_Dataset_v2(Dataset):
         else:
             self.channels_adj = False
 
-        self.num_worker = num_worker if num_worker > 0 else cpu_count(logical=True)
+        self.num_workers = num_workers
         self.RAM = RAM if not RAM else 'auto'
         self.RAM_lim = RAM_lim
 
@@ -90,7 +92,7 @@ class base_Dataset_v2(Dataset):
 
     def _RAM_check(self):
         mem_lim = (self.RAM_lim * self.mem.total) / (1024 ** 3)
-        self.logging_table(datset_table_col, [self.num_worker, mem_lim], table_name='Datset-setting')
+        logging_table(datset_table_col, [self.num_workers, mem_lim], table_name='Datset-setting')
         if self.RAM == 'auto':
             if not self.silence:
                 logging.debug(f"{block_name}: {self.label_path} RAM Temporary - {self.RAM}")
@@ -102,7 +104,7 @@ class base_Dataset_v2(Dataset):
 
             use_mem = self.mem.used / 1024 ** 3
             ram_table_value = [mem_lim, use_mem, file_size]
-            self.logging_table(ram_table_col, ram_table_value, table_name='RAM-Check-Table', it='G')
+            logging_table(ram_table_col, ram_table_value, table_name='RAM-Check-Table', it='G')
 
             self.RAM = True if mem_lim < file_size + self.mem.used else False
 
@@ -131,15 +133,17 @@ class base_Dataset_v2(Dataset):
 
     def _pre_loading(self):
         desc = f"{block_name}: Dataset pre-loading"
-        if self.num_worker == 1:
-            pbar = range(self.__len__()) if self.silence else tqdm(range(self.__len__()), desc=desc, ncols=self.ncols)
+        if self.num_workers <= 1:
+            pbar = range(self.__len__()) if self.silence else tqdm(range(self.__len__()),
+                                                                   desc=desc,
+                                                                   ncols=self.ncols)
             for i in pbar:
                 self.img_label[i] = self._get_image_and_label(i)
 
         else:
             with ThreadPoolExecutor() as executor:
                 mp_map = executor.map(self._get_image_and_label,
-                                                    range(self.__len__()))
+                                      range(self.__len__()))
 
                 self.img_label = list(mp_map if self.silence else tqdm(mp_map,
                                                                    total=self.__len__(),
@@ -152,19 +156,6 @@ class base_Dataset_v2(Dataset):
 
     def __getitem__(self, idx):
         return self.img_label[idx] if self.RAM else self._get_image_and_label(idx)
-
-    def logging_table(self, col, value, table_name='', it=''):
-        value = [str(round(i, 2))+it for i in value]
-        _col_str = ''
-        for c, v in zip(col, value):
-            _max = max([len(c), len(v)]) + 2
-            _str = '|{:^' + f'{_max}' + '}'
-            _col_str += _str
-
-        col = (_col_str+'|').format(*col)
-        value = (_col_str+'|').format(*value)
-        if not self.silence:
-            logging.debug(f'\n|{table_name:^{len(value)-2}}|\n{col}\n{value}\n')
 
     @staticmethod
     def _split_txt(line):
@@ -183,7 +174,7 @@ class MiniImageNetDataset:
                  silence=False,
                  cutmix_p=0,
                  image_path='images',
-                 num_worker=-1,
+                 num_workers=-1,
                  RAM='auto',
                  RAM_lim=0.9,
                  ncols=90
@@ -198,7 +189,7 @@ class MiniImageNetDataset:
         self.silence = silence
         self.ncols = ncols
 
-        self.num_worker = num_worker if num_worker > 0 else cpu_count(logical=False)
+        self.num_workers = num_workers
         self.RAM = RAM if not RAM else 'auto'
         self.RAM_lim = RAM_lim
 
@@ -215,7 +206,7 @@ class MiniImageNetDataset:
                                        channels_mode,
                                        silence,
                                        image_path,
-                                       num_worker,
+                                       num_workers,
                                        RAM,
                                        RAM_lim,
                                        ncols)
@@ -236,7 +227,7 @@ class MiniImageNetDataset:
                                      self.batch_size,
                                      shuffle=self.shuffle,
                                      pin_memory=self.pin_memory,
-                                     num_workers=min(self.num_worker, 4 if not self.RAM else 0),
+                                     num_workers=min(self.num_workers, 4 if not self.RAM else 0),
                                      collate_fn=self.collate_fn
                                      )
 
