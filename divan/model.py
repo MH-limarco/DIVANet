@@ -18,7 +18,7 @@ from divan.module import *
 
 warnings.simplefilter("ignore")
 scales_ls = ['n', 's', 'm', 'l', 'x']
-memory_used_command = "nvidia-smi --query-gpu=memory.used --format=csv"
+
 
 block_name = 'Model_Manager'
 FORMAT = '%(message)s'
@@ -47,20 +47,15 @@ eval_name = (
 )
 
 class base_model(nn.Module):
-    def __init__(self,seed=123):
+    def __init__(self, seed=123):
         super().__init__()
         self._set_seed(seed)
 
 
     def _ready_device(self):
         self.device_use = f'cuda' if torch.cuda.is_available() and self.device != 'cpu' else 'cpu'
-        self.device = f'cuda:{self.cuda_idx}' if torch.cuda.is_available() and self.device != 'cpu' else 'cpu'
-
-        if self.device_use == f'cuda:' and not 0 <= self.cuda_num < 2:
-            device_num = torch.cuda.device_count() if self.cuda_num < 0 else self.cuda_num
-            self.device_ls = [f'cuda:{i}' for i in range(device_num)]
-        else:
-            self.device_ls = []
+        self.cuda_idx = f':{self.cuda_idx}' if self.cuda_idx is not None and self.device_use != 'cpu' else ''
+        self.device = chose_cuda(self.device_use) if self.cuda_idx == '' else f'{self.device_use}{self.cuda_idx}'
 
     def _build_dataset(self):
         self.train_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'train.txt',
@@ -185,31 +180,34 @@ class base_model(nn.Module):
         torch.save(self.state_dict, self.state_PATH)
 
     def fit(self,
-              model_setting,
-              dataset_path,
-              epochs,
-              size=224,
-              silence=True,
-              channels='RGB',
-              channels_mode='smooth',
-              lr=0.005,
-              batch_size=16,
-              device=None,
-              RAM=True,
-              pin_memory=False,
-              amp=True,
-              ema=True,
-              ema_start=0,
-              early=20,
-              label_smoothing=0.075,
-              transform=None,
-              cuda_num=-1,
-              cuda_idx=1,
-              num_workers=-1,
-              cutmix_p=0,
-              pretrained=False,
-              ):
+            model_setting,
+            dataset_path,
+            epochs,
+            size=224,
+            silence=True,
+            channels='RGB',
+            channels_mode='smooth',
+            lr=0.005,
+            batch_size=16,
+            device=None,
+            RAM=True,
+            pin_memory=False,
+            amp=True,
+            ema=True,
+            ema_start=0,
+            early=20,
+            cutmix_close=15,
+            label_smoothing=0.1,
+            transform=None,
+            cuda_num=-1,
+            cuda_idx=None,
+            num_workers=-1,
+            cutmix_p=0,
+            pretrained=False,
+            ):
         assert isinstance(channels, str)
+        assert isinstance(cuda_idx, (int, type(None)))
+
         channels = channels.replace(' ', '')
 
         assert channels_mode in ['smooth', 'hard', 'auto']
@@ -235,11 +233,10 @@ class base_model(nn.Module):
         test_data(self.dataset_path)
         self._ready_device()
         self._build_dataset()
+        self._test_ram_loader(self.train_loader)
 
-##
 
         self._read_model()
-
         self.loss_function = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                      lr=self.lr,
@@ -293,6 +290,10 @@ class base_model(nn.Module):
             else:
                 self.early_count += 1
 
+            if epoch + self.cutmix_close == epochs + 1 and self.cutmix_p > 0:
+                logging.info(f'{block_name}: Close cutmix')
+                self._close_mosaic()
+
             if self.early_count >= self.early_lim:
                 break
 
@@ -312,27 +313,6 @@ class base_model(nn.Module):
     def table_with_fix(col, fix_len=13):
         formatted_str = '|'.join(f'{x:^{fix_len}}' for x in col)
         return f'|{formatted_str}|'
-
-
-    def train_col_string(self):
-        """Returns a formatted string of training progress with epoch, GPU memory, loss, instances and size."""
-        _col_name = (
-            "Epoch",
-            "GPU_mem",
-            "Train_loss",
-            "Size",
-        )
-        return ('\n'+f"{'|{:^13s}'* (len(_col_name))}|").format(*_col_name)
-
-    def eval_col_string(self):
-        """Returns a formatted string of training progress with epoch, GPU memory, loss, instances and size."""
-        _col_name = (
-            " ",
-            " ",
-            "Eval_loss",
-            "Eval_acc",
-        )
-        return (f"{'|{:^13s}'* (len(_col_name))}|").format(*_col_name)
 
     def train_string(self, epoch, loss=np.inf):
         _col_name = (
@@ -361,6 +341,13 @@ class base_model(nn.Module):
 
         for arg in args:
             setattr(self, arg, values[arg])
+
+    def _test_ram_loader(self, loader):
+        if self.RAM:
+            start = time.monotonic()
+            for data in tqdm(loader):
+                _ = data
+            logging.debug(f"{block_name}: RAM loader loop time: {round(time.monotonic()-start, 2)}s")
 
     @staticmethod
     def _set_seed(seed):

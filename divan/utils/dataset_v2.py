@@ -165,7 +165,7 @@ class MiniImageNetDataset:
     def __init__(self,
                  dataset_path,
                  label_path,
-                 transform=transforms,
+                 transform=_transforms,
                  channels='RGB',
                  channels_mode='smooth',
                  batch_size=32,
@@ -227,7 +227,7 @@ class MiniImageNetDataset:
                                      self.batch_size,
                                      shuffle=self.shuffle,
                                      pin_memory=self.pin_memory,
-                                     num_workers=min(self.num_workers, 4 if not self.RAM else 0),
+                                     num_workers=min(self.num_workers, 4),
                                      collate_fn=self.collate_fn
                                      )
 

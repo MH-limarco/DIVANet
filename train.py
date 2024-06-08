@@ -3,17 +3,17 @@ from divan import DIVAN
 
 if __name__ == "__main__":
     model = DIVAN()
-    model.fit("C2f-CBAM-FastKANConv.yaml",
+    model.fit("resnet34.yaml",
               "dataset",
-              epochs=30,
+              epochs=100,
               silence=False,
               channels="RGB",
-              channels_mode="smooth", # 'smooth', 'hard', 'auto'
+              channels_mode="auto", # 'smooth', 'hard', 'auto'
               batch_size=64,
-              RAM=False,
+              RAM=True,
               amp=True,
               ema=True,
               label_smoothing=0.1,
-              cuda_idx=0,
+              cuda_idx=None,
               num_workers=-1,
               cutmix_p=1)
