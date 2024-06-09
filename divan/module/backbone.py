@@ -1,6 +1,8 @@
+import time
+
 import torchvision, logging
 import torch.nn as nn
-import torch
+import torch, timm
 
 import contextlib, inspect, yaml, ast, re
 
@@ -13,9 +15,9 @@ from divan.module.head import *
 
 block_name = 'backbone'
 
-__all__ = ["torch_model", "yaml_model"]
+__all__ = ["torch_model", "timm_model", "yaml_model"]
 
-def torch_model(model, usage_args=False):
+def torch_model(model, usage_args=False, num_classes=50):
     weights = usage_args if usage_args is not False else None
     if type(model) == str:
         try:
@@ -41,13 +43,34 @@ def torch_model(model, usage_args=False):
 
     else:
         model = inlayer_resize(model(False), usage_args)
-
     return model
+
+def timm_model(model, usage_args=False, num_classes=50):
+    weights = usage_args if usage_args is not False else None
+    if type(model) == str:
+        try:
+            model = timm.create_model(model, pretrained=weights, num_classes=num_classes)
+
+        except:
+            try:
+                model = timm.create_model(model, pretrained=False, num_classes=num_classes)
+                weights = False
+                logging.warning(f'{block_name}: weights not exist')
+            except:
+                logging.warning(f'{block_name}: model not exist')
+                return None
+        finally:
+            logging.info(f'{block_name}: Loading model - {model.__class__.__name__}')
+            logging.info(f'{block_name}: Loading weights - {weights}')
+    else:
+        model = timm.create_model(model, in_chans=usage_args, num_classes=num_classes)
+    return model
+
 
 class yaml_model(nn.Module):
     def __init__(self, _dict, _input_channels, device):
         super().__init__()
-        self.sequential, self.save_idx = self.parse_model(_dict, _input_channels)
+        self.sequential, self.save_idx, self.fc_resize = self.parse_model(_dict, _input_channels)
         self.device = device
 
     def forward(self, x):
@@ -61,6 +84,7 @@ class yaml_model(nn.Module):
     def parse_model(_dict, _input_channels, input_pool='Pool_Conv'): # model_dict, input_channels(3)
 
         max_channels = float("inf")
+        fc_resize = True
         num_class, act, scales, c1_pool = (_dict.get(x) for x in ("nc", "activation", "scales","c1_pool"))
 
         if scales:
@@ -99,7 +123,7 @@ class yaml_model(nn.Module):
 
         for i, (f, n, m, args) in enumerate(full_dict):  # from, number, module, args
             assert max([f] if isinstance(f, int) else f) < i
-            m = m.split('_') if m != 'torch_model' else [m]
+            m = m.split('_') if m not in ['torch_model', 'timm_model'] else [m]
             if len(m) == 2:
                 if 'KA' in m[1] and 'NConv' in m[1]:
                     m, _conv = m[0] + '_KAN', m[1]
@@ -114,7 +138,6 @@ class yaml_model(nn.Module):
                 raise ValueError(f'invalid model: {m}')
 
             m = getattr(nn, m[3:]) if m.startswith('nn.') else globals()[m]
-
             _conv = globals()[_conv] if _conv else Conv
 
             for j, a in enumerate(args):
@@ -122,7 +145,7 @@ class yaml_model(nn.Module):
                     with contextlib.suppress(ValueError):
                         args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
 
-            if m not in [nn.BatchNorm2d, Concat, torch_model,
+            if m not in [nn.BatchNorm2d, Concat, torch_model, timm_model,
                          ChannelAttention, SpatialAttention, CBAM
                          ]:
                 c1, c2 = ch[f], args[0]
@@ -150,10 +173,13 @@ class yaml_model(nn.Module):
             elif m is Concat:
                 c2 = sum(ch[x] for x in f)
 
-            elif m is torch_model:
+            elif m in [torch_model, timm_model]:
                 if _input_channels == "auto":
                     _arg = inspect.getfullargspec(m)[0]
                     args.insert(_arg.index("usage_args"), 1)
+                    args.insert(_arg.index("num_classes"), num_class)
+                if m == timm_model:
+                    fc_resize = False
                 c2 = ch[f]
 
             else:
@@ -171,7 +197,7 @@ class yaml_model(nn.Module):
             if i == 0:
                 ch = []
             ch.append(c2)
-        return nn.Sequential(*layers), sorted(save)
+        return nn.Sequential(*layers), sorted(save), fc_resize
 
 if __name__ == '__main__':
     FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'

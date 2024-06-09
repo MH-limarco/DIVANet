@@ -12,13 +12,15 @@ from tqdm.auto import tqdm
 import logging, yaml, time, inspect
 import numpy as np
 
-from divan.test import *
+from divan.check import *
 from divan.utils import *
 from divan.module import *
 
 warnings.simplefilter("ignore")
 scales_ls = ['n', 's', 'm', 'l', 'x']
+state_PATH = 'HGNetv2.pt'
 
+logging.getLogger('asyncio').setLevel(logging.DEBUG)
 
 block_name = 'Model_Manager'
 FORMAT = '%(message)s'
@@ -47,10 +49,25 @@ eval_name = (
 )
 
 class base_model(nn.Module):
-    def __init__(self, seed=123):
+    def __init__(self,
+                 model_setting,
+                 channels='RGB',
+                 channels_mode='smooth',
+                 seed=123):
         super().__init__()
-        self._set_seed(seed)
+        assert isinstance(channels, (str, type(None)))
+        channels = channels.replace(' ', '') if channels != None else channels
 
+        assert channels_mode in ['smooth', 'hard', 'auto']
+        assert 1 <= len(channels) <= 3 or channels == 'auto'
+
+        self.epoch = 1
+        self.model_setting = model_setting
+        self._set_seed(seed)
+        if model_setting.endwith('.pt'):
+            self._load_state(model_setting)
+
+        self._read_model()
 
     def _ready_device(self):
         self.device_use = f'cuda' if torch.cuda.is_available() and self.device != 'cpu' else 'cpu'
@@ -60,17 +77,17 @@ class base_model(nn.Module):
     def _build_dataset(self):
         self.train_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'train.txt',
                                                  transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=self.silence, shuffle=True, num_workers= self.num_workers, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size, cutmix_p=self.cutmix_p)
-        self.test_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'test.txt',
+        self.test_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'check.txt',
                                                 transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, num_workers= self.num_workers, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
         self.val_Manager = MiniImageNetDataset(f'dataset/{self.dataset_path}', 'val.txt',
                                                transform=self.transform, channels=self.channels, channels_mode=self.channels_mode, silence=True, shuffle=False, num_workers= self.num_workers, pin_memory=self.pin_memory, RAM=self.RAM, batch_size=self.batch_size)
 
         self._build_loader()
 
-    def _close_mosaic(self):
-        self.train_Manager.close_mosaic()
-        self.test_Manager.close_mosaic()
-        self.val_Manager.close_mosaic()
+    def close_cutmix(self):
+        self.train_Manager.close_cutmix()
+        self.test_Manager.close_cutmix()
+        self.val_Manager.close_cutmix()
 
     def _build_loader(self):
         self.train_loader = self.train_Manager.DataLoader
@@ -169,7 +186,8 @@ class base_model(nn.Module):
         self._loader(self.test_loader, 'val')
 
     def _save_state(self, epoch):
-        self.state_dict = {'epoch':epoch,
+        self.state_dict = {'model_setting':self.model_setting,
+                           'epoch':epoch,
                            'model':self.model.state_dict(),
                            'optimizer':self.optimizer.state_dict(),
                            'scheduler':self.scheduler.state_dict(),
@@ -179,14 +197,27 @@ class base_model(nn.Module):
 
         torch.save(self.state_dict, self.state_PATH)
 
+    def _load_state(self, state_PATH=None):
+        if hasattr(self, self.state_dict) or state_PATH is not None:
+            if state_PATH is not None:
+                self.state_dict = torch.load(state_PATH)
+
+            self.model_setting = self.state_dict['model_setting']
+            self.epoch = self.state_dict['epoch']
+            self.model = self.model.load_state_dict(self.state_dict['model'])
+            self.optimizer = self.optimizer.load_state_dict(self.state_dict['optimizer'])
+            self.scheduler = self.optimizer.load_state_dict(self.state_dict['scheduler'])
+            self.ema = self.ema.load_state_dict(self.state_dict['ema'])
+            self.ema_scheduler = self.ema_scheduler.load_state_dict(self.state_dict['ema_scheduler'])
+        else:
+            raise IOError
+
+
     def fit(self,
-            model_setting,
             dataset_path,
             epochs,
             size=224,
             silence=True,
-            channels='RGB',
-            channels_mode='smooth',
             lr=0.005,
             batch_size=16,
             device=None,
@@ -201,17 +232,11 @@ class base_model(nn.Module):
             transform=None,
             cuda_num=-1,
             cuda_idx=None,
-            num_workers=-1,
+            num_workers=0,
             cutmix_p=0,
             pretrained=False,
             ):
-        assert isinstance(channels, str)
         assert isinstance(cuda_idx, (int, type(None)))
-
-        channels = channels.replace(' ', '')
-
-        assert channels_mode in ['smooth', 'hard', 'auto']
-        assert 1 <= len(channels) <= 3 or channels == 'auto'
 
         log_filename = "all_log.log"
         logging.basicConfig(
@@ -228,17 +253,15 @@ class base_model(nn.Module):
         self.in_channels = len(self.channels) if channels_mode == 'hard' else 3
         self.num_workers = num_workers if num_workers >= 0 else cpu_count(logical=False)
         self.state_dict = None
-        self.state_PATH = 'save.pt'
+        self.state_PATH = state_PATH
 
         test_data(self.dataset_path)
         self._ready_device()
         self._build_dataset()
         self._test_ram_loader(self.train_loader)
 
-
-        self._read_model()
         self.loss_function = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
-        self.optimizer = torch.optim.Adam(self.model.parameters(),
+        self.optimizer = torch.optim.AdamW(self.model.parameters(),
                                      lr=self.lr,
                                      weight_decay=0)
 
@@ -278,7 +301,7 @@ class base_model(nn.Module):
                                       min_ncol=11
                                       ))
 
-        for epoch in range(1, epochs+1):
+        for epoch in range(self.epoch, epochs+1):
             self._train_step(epoch)
 
             if self.eval_loss < self.best_loss:
@@ -292,7 +315,7 @@ class base_model(nn.Module):
 
             if epoch + self.cutmix_close == epochs + 1 and self.cutmix_p > 0:
                 logging.info(f'{block_name}: Close cutmix')
-                self._close_mosaic()
+                self.close_cutmix()
 
             if self.early_count >= self.early_lim:
                 break
@@ -305,9 +328,6 @@ class base_model(nn.Module):
             self._test_step()
         else:
             logging.warning(f'{block_name}: Model not training yet')
-
-    def predict(self, x):
-        return self._forward(x)
 
     @staticmethod
     def table_with_fix(col, fix_len=13):
@@ -345,7 +365,7 @@ class base_model(nn.Module):
     def _test_ram_loader(self, loader):
         if self.RAM:
             start = time.monotonic()
-            for data in tqdm(loader):
+            for data in tqdm(loader, desc=f"|{block_name} - speed check|"):
                 _ = data
             logging.debug(f"{block_name}: RAM loader loop time: {round(time.monotonic()-start, 2)}s")
 
@@ -387,11 +407,17 @@ class DIVAN(base_model):
 
         if self.channels_mode != 'auto':
             self.model = inlayer_resize(self.model, self.in_channels)
-            self._fc_layer_resize()
+            if self.model.fc_resize:
+                self._fc_layer_resize()
+            else:
+                self.model = self.model.to(self.device)
             self.input_c = len(self.channels)
 
         else:
-            self._fc_layer_resize()
+            if self.model.fc_resize:
+                self._fc_layer_resize()
+            else:
+                self.model = self.model.to(self.device)
             self.input_c = 'auto'
 
     @staticmethod

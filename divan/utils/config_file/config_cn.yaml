@@ -1,0 +1,72 @@
+#
+## 123  ##
+Dataset_PATH: "dataset/"
+
+cfg_PATH: "cfg/"
+
+save_PATH: "run/"
+
+##  divanet.py  ##
+divanet:
+  block_name: "模型管理器"       #Model Manager
+
+  scales_str: ['n', 's', 'm', 'l', 'x']
+
+  fit_setting_col: ["運算設備",         #device
+                    "自動混合精度",        #amp use
+                    "梯度縮放器",     #scaler use
+                    "CutMix使用",     #CutMix use
+                    "參數指數移動平均",        #EMA use
+                    "標記平滑強化"    #label smooth rate
+                    ]
+
+  fit_training_col: ["Epoch",         #Epoch
+                     "GPU內存使用量",       #GPU memory
+                     "Train_loss",    #Train loss
+                     "圖片大小"           #image Size
+                    ]
+
+  fit_eval_col: [" ",
+                 " ",
+                 "Eval_loss",         #Eval loss
+                 "Eval_acc",          #Eval acc
+                ]
+
+## chcek/check_file.py ##
+check_file:
+  block_name: "Data_Inspector"        #Data Inspector
+
+  os_dir:  {'posix':"liunx",
+            'nt':"windows"
+            }
+
+## module/backbone.py ##
+backbone:
+  block_name: 'Backbone_Manager'      #Backbone Manager
+
+
+## utils/cuda_ready.py ##
+cuda_ready:
+  block_name: "CUDA_Manager"          #CUDA Manager
+
+  memory_utilization_command: nvidia-smi --query-gpu=utilization.memory --format=csv
+
+## utils/dataset.py ##
+dataset:
+  block_name: '資料集管理器'       #Dataset Manager
+
+  image_dtype: uint8
+
+  RGB_index: ['R', 'G', 'B']
+
+  dataset_table_col: ["num_workers",  #num workers
+                      "RAM_lim"       #RAM lim
+                      ]
+
+  ram_table_col: ["Available_mem",    #Available memory
+                  "Usage_mem",        #Usage memory
+                  "Intended_mem"      #Intended memory
+                  ]
+
+
+

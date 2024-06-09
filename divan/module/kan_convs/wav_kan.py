@@ -337,7 +337,7 @@ class WavKANConvNDLayer(nn.Module):
         self.base_activation = nn.SiLU()
 
     def forward_wavkan(self, x, group_ind):
-        # You may like test the cases like Spl-KAN
+        # You may like check the cases like Spl-KAN
         base_output = self.base_conv[group_ind](self.base_activation(x))
 
         if self.dropout is not None:
