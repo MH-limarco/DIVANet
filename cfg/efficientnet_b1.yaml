@@ -1,4 +1,4 @@
-3.yaml# Parameters
+# Parameters
 nc: 1000 # number of classes
 activation: Mish
 scales:
