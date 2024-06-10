@@ -1,8 +1,9 @@
 import inspect
 
-__all__ = ["set_arg", "set_kargs"]
+__all__ = ["apply_args", "apply_kwargs"]
 
-def set_arg(_class, kargs=None):
+
+def apply_args(_class, kargs=None):
     if kargs is None:
         frame_func = inspect.currentframe().f_back
         args, _, _, values = inspect.getargvalues(frame_func)
@@ -11,9 +12,9 @@ def set_arg(_class, kargs=None):
         for arg in args:
             setattr(_class, arg, values[arg])
     else:
-        set_kargs(_class, kargs)
+        apply_kwargs(_class, kargs)
 
-def set_kargs(_class, kargs):
+def apply_kwargs(_class, kargs):
     assert isinstance(kargs, dict)
     kargs.pop('self', None)
     for arg, value in kargs.items():
@@ -23,7 +24,7 @@ def set_kargs(_class, kargs):
 if __name__ == '__main__':
     class test_class:
         def __init__(self, d=None):
-            set_arg(self, d)
+            apply_args(self, d)
             print(f"self.test: {self.test}\n"
                   f"self.val: {self.val}")
     test_class({'test':1, 'val':2})

@@ -6,11 +6,11 @@ os_dir = {'posix':'liunx',
           'nt':'windows'
           }
 
-__all__ = ['test_data']
+__all__ = ['check_file']
 
 block_name = 'test_file'
 
-def test_data(data_name, _http=http):
+def check_file(data_name, _http=http):
     logging.info(f'OS: {os_dir[os.name]}')
     logging.info(f'{block_name}: Dataset name - {data_name}')
 

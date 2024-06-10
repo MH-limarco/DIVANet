@@ -1,10 +1,10 @@
 #
 ## 123  ##
-Dataset_PATH: "dataset/"
+divanet2:
 
-cfg_PATH: "cfg/"
-
-save_PATH: "run/"
+  Dataset_PATH: "dataset/"
+  cfg_PATH: "cfg/"
+  save_PATH: "run/"
 
 ##  divanet.py  ##
 divanet:

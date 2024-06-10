@@ -16,40 +16,13 @@ from divan.check import *
 from divan.utils import *
 from divan.module import *
 
-block_name = 'Model_Manager'
-FORMAT = '%(message)s'
-
 warnings.simplefilter("ignore")
-logging.getLogger('asyncio').setLevel(logging.DEBUG)
-scales_ls = ['n', 's', 'm', 'l', 'x']
 state_PATH = 'HGNetv2.pt'
 
-setting_name = (
-    "device",
-    "amp_use",
-    "scaler_use",
-    "Mosaic_use",
-    "EMA_use",
-    "label_smooth",
-)
-
-train_name = (
-    "Epoch",
-    "GPU_mem",
-    "Train_loss",
-    "Size",
-)
-
-eval_name = (
-    " ",
-    " ",
-    "Eval_loss",
-    "Eval_acc",
-)
-
-class base_Manager(nn.Module):
+class model_Manager(nn.Module):
     def __init__(self):
-        pass
+        super().__init__()
+        apply_config(self, __file__)
 
     def to(self):
         pass
@@ -109,7 +82,7 @@ class base_Manager(nn.Module):
         return (f" ",
                 f" ",
                 f"{round(loss, 3) if loss != np.inf else loss}",
-                f"{round(acc,3)}")
+                f"{round(acc, 3)}")
 
     def _self_arg(self):
         frame_func = inspect.currentframe().f_back
@@ -138,3 +111,5 @@ class base_Manager(nn.Module):
             torch.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
 
+if __name__ == "__main__":
+    model_Manager()

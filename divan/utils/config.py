@@ -2,23 +2,25 @@ import torch
 import yaml
 
 from divan.utils.utils import *
+from divan.utils.config_file import *
 
-class Config:
+__all__ = ["apply_config"]
+
+use_version = 'en'
+
+class project_config:
     def __init__(self, version='en'):
-        #with open(f"divan/utils/config_file/config_{version}.yaml",
-        with open(f"config_file/config_{version}.yaml",
-                  mode='r', encoding="utf-8"
-                  ) as stream:
+        with open(f"divan/utils/config_file/config_{version}.yaml",
+                  mode='r', encoding="utf-8") as stream:
             _config = yaml.safe_load(stream)
+        apply_args(self)
+        apply_kwargs(self, _config)
+        self.dataset['transforms'] = Transforms
 
-        set_arg(self)
-        set_kargs(self, _config)
+def apply_config(_class, file):
+    file_index = file.split('/')[-1].split('.')[0]
+    _config = getattr(Config, file_index)
+    apply_kwargs(_class, _config)
+    apply_kwargs(_class, getattr(Config, 'base'))
 
-        print(locals())
-        print(__file__)
-
-
-
-if __name__ == "__main__":
-    Config()
-
+Config = project_config(version=use_version)
