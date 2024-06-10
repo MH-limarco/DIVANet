@@ -1,5 +1,5 @@
 import torch
-import yaml
+import yaml, os
 
 from divan.utils.utils import *
 from divan.utils.config_file import *
@@ -18,7 +18,7 @@ class project_config:
         self.dataset['transforms'] = Transforms
 
 def apply_config(_class, file):
-    file_index = file.split('/')[-1].split('.')[0]
+    file_index = file.split(os.sep)[-1].split('.')[0]
     _config = getattr(Config, file_index)
     apply_kwargs(_class, _config)
     apply_kwargs(_class, getattr(Config, 'base'))

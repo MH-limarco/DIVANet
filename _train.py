@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     dataset = dataset_Manager('dataset', 'train.txt')
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=12)
 
     for img, label in tqdm(dataloader):
         pass
