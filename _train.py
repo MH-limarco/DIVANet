@@ -8,10 +8,13 @@ import time
 import torch.multiprocessing
 
 if __name__ == "__main__":
-    torch.multiprocessing.set_sharing_strategy('file_system')
-
+    FORMAT = '%(message)s'
+    logging.basicConfig(level=logging.DEBUG,
+                        format=FORMAT)
     start = time.monotonic()
-    dataset = DIVANetDataset('dataset', 'train.txt',channels=None)
-    dataset_load = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=40)
-    for img, label, c_idx in tqdm(dataset_load):
-        print(c_idx)
+    dataset = Dataset_Manager('dataset', channels=None, RAM=False)
+    for i in tqdm(dataset.train_loader):
+        pass
+    #dataset_load = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=40)
+    #for img, label, c_idx in tqdm(dataset_load):
+    #    pass

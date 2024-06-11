@@ -4,9 +4,9 @@ import yaml, os
 from divan.utils.utils import *
 from divan.utils.config_file import *
 
-__all__ = ["apply_config"]
+__all__ = ["apply_config", "read_config"]
 
-use_version = 'en'
+use_version = "en"
 
 class project_config:
     def __init__(self, version='en'):
@@ -23,5 +23,9 @@ def apply_config(_class, file):
     _config = getattr(Config, file_index)
     apply_kwargs(_class, _config)
     apply_kwargs(_class, getattr(Config, 'base'))
+
+def read_config(file):
+    file_index = file.split(os.sep)[-1].split('.')[0]
+    return getattr(Config, file_index)
 
 Config = project_config(version=use_version)

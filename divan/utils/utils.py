@@ -2,7 +2,6 @@ import inspect
 
 __all__ = ["apply_args", "apply_kwargs"]
 
-
 def apply_args(_class, kargs=None):
     if kargs is None:
         frame_func = inspect.currentframe().f_back

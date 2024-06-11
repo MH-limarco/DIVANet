@@ -59,14 +59,14 @@ dataset:
 
   RGB_index: ['R', 'G', 'B']
 
-  dataset_table_col: ["num_workers",  #num workers
-                      "RAM_lim"       #RAM lim
-                      ]
+  system_info: ["num_workers",        #num workers
+                "RAM_limit"           #RAM limit
+               ]
 
-  ram_table_col: ["Available_mem",    #Available memory
-                  "Usage_mem",        #Usage memory
-                  "Intended_mem"      #Intended memory
-                  ]
+  ram_info: ["Limit_usage",             #Available memory
+             "Current_usage",           #Usage memory
+             "Intended_usage"           #Intended memory
+             ]
 
 
 

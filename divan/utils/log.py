@@ -1,6 +1,8 @@
 import logging
 from itertools import zip_longest
 
+__all__ = ["get_logger", "logging_table"]
+
 def get_logger(name, log_file, level=logging.INFO):
     logger = logging.getLogger(name)
     logger.setLevel(level)
