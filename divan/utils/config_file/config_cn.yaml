@@ -59,6 +59,8 @@ dataset:
 
   RGB_index: ['R', 'G', 'B']
 
+  data_name: ['train', 'val', 'test']
+
   system_info: ["num_workers",        #num workers
                 "RAM_limit"           #RAM limit
                ]

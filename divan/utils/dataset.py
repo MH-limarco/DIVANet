@@ -1,53 +1,45 @@
-import glob, math
-
 from torch.utils.data import Dataset, DataLoader, default_collate
 from torch.multiprocessing import set_sharing_strategy
 from torchvision.transforms import v2
 from torchvision.io import read_image
 import torch
 
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from psutil import virtual_memory, cpu_count
-from tqdm import tqdm
-from os import path, walk, sep
-import logging, asyncio
+import logging, math
 import numpy as np
 from tqdm import tqdm
+from os import path
 
-from divan.utils import *
+from divan.utils.config import *
 from divan.utils.log import *
 from divan.utils.transformer import *
+from divan.utils.utils import *
 
 
-import matplotlib.pyplot as plt
-import torch
-from torchvision.utils import draw_bounding_boxes, draw_segmentation_masks
-from torchvision import tv_tensors
-from torchvision.transforms.v2 import functional as F
 
 
 class DIVANetDataset(Dataset):
     def __init__(self,
-                 data_name,
+                 file_name,
                  label_txt,
                  size=224,
                  channels=None,
+                 random_p=0.8,
                  max_channels=3,
-                 random_p=0.7,
                  ):
         super().__init__()
         assert isinstance(channels, (str, type(None)))
         assert isinstance(size, (int, tuple, list))
 
-        utils.apply_args(self)
-        config.apply_config(self, __file__)
+        apply_args(self)
+        apply_config(self, __file__)
 
         self.transforms[0].size = (self.size, self.size) if isinstance(self.size, int) else self.size
         output_transform = [v2.ToDtype(getattr(torch, self.image_dtype), scale=True)]
         self.transforms = v2.Compose(self.transforms + output_transform)
         self.RAM = False
 
-        self.Dataset_PATH = self.Dataset_PATH + f"{self.data_name}"
+        self.Dataset_PATH = self.Dataset_PATH + f"{file_name}"
         self._read_data()
 
     def _read_data(self):
@@ -121,23 +113,22 @@ class Dataset_Manager:
                  pin_memory=False,
                  shuffle=True,
                  silence=False,
-                 num_workers=8,
+                 random_p=0.8,
+                 num_workers=-1,
                  RAM='auto',
                  cutmix_p=1,
                  ncols=90,
                  RAM_lim=0.925,
-                 pre_reading_worker=-1,
                  ):
         assert isinstance(label_path, (tuple, list)) and len(label_path) >= 2
         assert isinstance(size, (int, list, tuple))
 
-        utils.apply_args(self)
-        config.apply_config(self, __file__)
-        self.data_name = ['train', 'val', 'test']
+        apply_args(self)
+        apply_config(self, __file__)
         self.mem = virtual_memory()
         self.RAM = False if not RAM else 'auto'
         self.collate_fn_use = True
-        self.pre_reading_worker = pre_reading_worker if pre_reading_worker >= 0 else cpu_count(logical=False)
+        self.num_workers = num_workers if num_workers >= 0 else cpu_count(logical=False)
         self._ready()
 
     def _ready(self):
@@ -166,7 +157,11 @@ class Dataset_Manager:
         idx_ls[-1] = 2 if len(self.label_path) >= 3 else 1
 
         for idx, name in zip(idx_ls, self.data_name):
-            _dataset = DIVANetDataset(self.dataset_path, self.label_path[idx], size=self.size, channels=_channels[idx])
+            _dataset = DIVANetDataset(self.dataset_path, self.label_path[idx],
+                                      size=self.size,
+                                      random_p=self.random_p,
+                                      channels=_channels[idx]
+                                      )
             setattr(self, f"{name}_Data", _dataset)
 
         self.Data_list = [self.train_Data, self.val_Data, self.test_Data]
@@ -174,13 +169,13 @@ class Dataset_Manager:
 
     def _build_loader(self):
         for idx, (_dataset, name) in enumerate(zip(self.Data_list, self.data_name)):
-            collate_fn = self._collate_eval if idx > 0 else self._collate_train
+            collate_fn = self._collate_eval if (idx > 0 or self.cutmix_p<=0) else self._collate_train
             loader = DataLoader(_dataset,
                                 batch_size=self.batch_size,
                                 pin_memory=self.pin_memory,
                                 shuffle=self.shuffle,
-                                num_workers=self.num_workers if self.RAM else 0,
-                                collate_fn=collate_fn if self.collate_fn_use else None
+                                num_workers=min(8, self.num_workers if self.RAM else 0),
+                                collate_fn= collate_fn
                                 )
             setattr(self, f"{name}_loader", loader)
 
@@ -237,8 +232,8 @@ class Dataset_Manager:
         for idx, dataset in enumerate(self.Data_list):
             self._pre_loading_step(dataset, show, False if idx > 0 else True)
         self.shuffle = False
-        self.collate_fn_use = False
-        self.close_cutmix()
+        #self.collate_fn_use = False if self.full_preload else self.collate_fn_use
+        self._build_loader()
 
     def _pre_loading_step(self, _dataset, show, cutmix=False):
         set_sharing_strategy('file_system')
@@ -247,9 +242,9 @@ class Dataset_Manager:
         loader = DataLoader(_dataset,
                             batch_size=batch_size,
                             shuffle=self.shuffle,
-                            num_workers=min(self.pre_reading_worker, round(len(_dataset)//batch_size)),
-                            collate_fn = self._collate_eval if not cutmix else self._collate_train
+                            num_workers=min(self.num_workers, round(len(_dataset)//batch_size)),
                             )
+
         desc = f"{self.block_name}: Dataset pre-loading"
         pbar = tqdm(loader, desc=desc, ncols=self.ncols) if show else loader
         for img, label, c_idx in pbar:

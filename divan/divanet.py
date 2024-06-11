@@ -19,9 +19,12 @@ from divan.module import *
 warnings.simplefilter("ignore")
 state_PATH = 'HGNetv2.pt'
 
+#dataset = Dataset_Manager('dataset', batch_size=64, channels='RGB', RAM=True, shuffle=True)
+
 class model_Manager(nn.Module):
     def __init__(self):
         super().__init__()
+        utils.apply_args(self)
         apply_config(self, __file__)
 
     def to(self):
@@ -32,7 +35,7 @@ class model_Manager(nn.Module):
         with torch.autocast(device_type=self.device):
             return self.model(x.float().to(self.device))
 
-    def fit(self):
+    def fit(self, ):
         pass
 
     def valid(self):
@@ -53,8 +56,15 @@ class model_Manager(nn.Module):
     def _train_ready_device(self):
         pass
 
-    def _train_build_dataset(self):
-        pass
+    def _build_dataset(self
+                       ):
+        Dataset_Manager(dataset_path=self.dataset_path,
+                        channels=self.channels,
+                        size=self.size,
+                        batch_size=self.batch_size,
+                        pin_memory=self.pin_memory,
+                        RAM=True,
+                        shuffle=True,
 
     def _train_close_cutmix(self):
         pass
