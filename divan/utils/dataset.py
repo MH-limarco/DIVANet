@@ -174,15 +174,18 @@ class Dataset_Manager:
                                 batch_size=self.batch_size,
                                 pin_memory=self.pin_memory,
                                 shuffle=self.shuffle,
-                                num_workers=min(8, self.num_workers if self.RAM else 0),
+                                num_workers= min(0 if self.RAM else self.num_workers, 10),
                                 collate_fn= collate_fn
                                 )
             setattr(self, f"{name}_loader", loader)
 
     def _setup_cutmix(self):
         p = [self.cutmix_p, 1-self.cutmix_p]
-        self.out_train = randomChoice([self.cutmix, self.one_hot], p=p)
-        self.out_eval = randomChoice([self.cutmix, self.one_hot], p=[0, 1])
+        if self.cutmix_p > 0:
+            self.out_train = randomChoice([self.cutmix, self.one_hot], p=p)
+        else:
+            self.out_train = identity(self.one_hot)
+        self.out_eval = identity(self.one_hot)
 
     def _collate_train(self, batch):
         return self.out_train(*default_collate(batch))
