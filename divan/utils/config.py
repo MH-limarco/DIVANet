@@ -10,7 +10,8 @@ use_version = 'en'
 
 class project_config:
     def __init__(self, version='en'):
-        with open(f"divan/utils/config_file/config_{version}.yaml",
+        file_path = os.sep.join(__file__.split(os.sep)[:-1])
+        with open(f"{file_path}/config_file/config_{version}.yaml",
                   mode='r', encoding="utf-8") as stream:
             _config = yaml.safe_load(stream)
         apply_args(self)

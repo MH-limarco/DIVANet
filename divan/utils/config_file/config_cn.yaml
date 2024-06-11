@@ -15,7 +15,7 @@ divanet:
   fit_setting_col: ["運算設備",         #device
                     "自動混合精度",        #amp use
                     "梯度縮放器",     #scaler use
-                    "CutMix使用",     #CutMix use
+                    "調用CutMix",     #CutMix use
                     "參數指數移動平均",        #EMA use
                     "標記平滑強化"    #label smooth rate
                     ]

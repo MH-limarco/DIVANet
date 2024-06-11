@@ -1,11 +1,17 @@
+import numpy as np
+
 from divan import *
-from divan.utils.dataset import dataset_Manager
+from divan.utils.dataset import DIVANetDataset
 from divan.check.check_file import check_file
 from tqdm import tqdm
+import time
+import torch.multiprocessing
 
 if __name__ == "__main__":
-    dataset = dataset_Manager('dataset', 'train.txt')
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=12)
+    torch.multiprocessing.set_sharing_strategy('file_system')
 
-    for img, label in tqdm(dataloader):
-        pass
+    start = time.monotonic()
+    dataset = DIVANetDataset('dataset', 'train.txt',channels=None)
+    dataset_load = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=40)
+    for img, label, c_idx in tqdm(dataset_load):
+        print(c_idx)
