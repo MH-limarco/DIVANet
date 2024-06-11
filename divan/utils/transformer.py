@@ -9,7 +9,6 @@ class one_hot(Transform):
     def __init__(self, num_classes):
         super().__init__()
         self.num_classes = num_classes
-
     def forward(self, *inputs):
         img, label = inputs
         label = F.one_hot(label, num_classes=self.num_classes).float()
@@ -22,13 +21,13 @@ class randomChoice(RandomChoice):
         transform = self.transforms[idx]
         long_input = True if len(inputs) >= 3 else False
         if long_input:
-            img, c_idx, label = inputs
+            img, label, c_idx = inputs
         else:
             img, label = inputs
 
         img, label = transform(img, label)
 
         if long_input:
-            return img, c_idx, label
+            return img, label, c_idx
         else:
             return img, label

@@ -12,8 +12,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG,
                         format=FORMAT)
     start = time.monotonic()
-    dataset = Dataset_Manager('dataset', channels=None, RAM=False)
-    for img, c_idx, label in tqdm(dataset.train_loader):
+    dataset = Dataset_Manager('dataset', batch_size=64, channels='RGB', RAM=True, shuffle=True)
+    for img, label, c_idx in tqdm(dataset.train_loader):
+        pass
+
+    for img, label, c_idx in tqdm(dataset.val_loader):
+        pass
+
+    for img, label, c_idx in tqdm(dataset.test_loader):
         pass
     #dataset_load = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=40)
     #for img, label, c_idx in tqdm(dataset_load):

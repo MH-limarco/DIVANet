@@ -91,7 +91,7 @@ class DIVANetDataset(Dataset):
 
         img[channels_adj] = 0
 
-        return img, channels_idx.bool(), int(label)
+        return img, int(label), channels_idx.bool()
 
     def _updata_img_label(self, img_label):
         self.img_label = img_label
@@ -136,6 +136,7 @@ class Dataset_Manager:
         self.data_name = ['train', 'val', 'test']
         self.mem = virtual_memory()
         self.RAM = False if not RAM else 'auto'
+        self.collate_fn_use = True
         self.pre_reading_worker = pre_reading_worker if pre_reading_worker >= 0 else cpu_count(logical=False)
         self._ready()
 
@@ -156,7 +157,7 @@ class Dataset_Manager:
     def close_cutmix(self):
         assert hasattr(self, "Data_list")
         self.cutmix_p = 0
-        self._build_loader(collate_fn_use=False)
+        self._build_loader()
 
     def _buildup_datasets(self):
         _channels = self.channels if isinstance(self.channels,
@@ -169,17 +170,17 @@ class Dataset_Manager:
             setattr(self, f"{name}_Data", _dataset)
 
         self.Data_list = [self.train_Data, self.val_Data, self.test_Data]
-        self._build_loader(collate_fn_use=True)
+        self._build_loader()
 
-    def _build_loader(self, collate_fn_use=True):
+    def _build_loader(self):
         for idx, (_dataset, name) in enumerate(zip(self.Data_list, self.data_name)):
             collate_fn = self._collate_eval if idx > 0 else self._collate_train
             loader = DataLoader(_dataset,
                                 batch_size=self.batch_size,
                                 pin_memory=self.pin_memory,
                                 shuffle=self.shuffle,
-                                num_workers=self.num_workers,
-                                collate_fn=collate_fn if collate_fn_use else None
+                                num_workers=self.num_workers if self.RAM else 0,
+                                collate_fn=collate_fn if self.collate_fn_use else None
                                 )
             setattr(self, f"{name}_loader", loader)
 
@@ -235,6 +236,8 @@ class Dataset_Manager:
         assert hasattr(self, 'Data_list')
         for idx, dataset in enumerate(self.Data_list):
             self._pre_loading_step(dataset, show, False if idx > 0 else True)
+        self.shuffle = False
+        self.collate_fn_use = False
         self.close_cutmix()
 
     def _pre_loading_step(self, _dataset, show, cutmix=False):
@@ -243,21 +246,22 @@ class Dataset_Manager:
         img_ls, c_idx_ls, label_ls = [], [], []
         loader = DataLoader(_dataset,
                             batch_size=batch_size,
-                            shuffle=False,
+                            shuffle=self.shuffle,
                             num_workers=min(self.pre_reading_worker, round(len(_dataset)//batch_size)),
                             collate_fn = self._collate_eval if not cutmix else self._collate_train
                             )
-        pbar = tqdm(loader) if show else loader
-        for img, c_idx, label in pbar:
+        desc = f"{self.block_name}: Dataset pre-loading"
+        pbar = tqdm(loader, desc=desc, ncols=self.ncols) if show else loader
+        for img, label, c_idx in pbar:
             img_ls.append(img)
-            c_idx_ls.append(c_idx)
             label_ls.append(label)
-        set_sharing_strategy('file_descriptor')
+            c_idx_ls.append(c_idx)
 
+        set_sharing_strategy('file_descriptor')
         imgs = torch.cat(img_ls, dim=0)
-        c_idxs = torch.cat(c_idx_ls, dim=0)
         labels = torch.cat(label_ls, dim=0)
-        img_label = list(zip(imgs, c_idxs, labels))
+        c_idxs = torch.cat(c_idx_ls, dim=0)
+        img_label = list(zip(imgs, labels, c_idxs))
         _dataset._updata_img_label(img_label)
 
 
