@@ -265,8 +265,3 @@ class Dataset_Manager:
 
 if __name__ == '__main__':
     DIVANetDataset('dataset', 'train.txt')
-
-
-
-
-

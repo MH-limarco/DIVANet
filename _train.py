@@ -12,13 +12,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG,
                         format=FORMAT)
     start = time.monotonic()
-    dataset = Dataset_Manager('dataset', batch_size=64, cutmix_p=0.0, channels='RGB', RAM=False, shuffle=True)
+    dataset = Dataset_Manager('dataset', batch_size=64, channels=None, RAM=True, shuffle=True)
     for img, label, c_idx in tqdm(dataset.train_loader):
+        #print(c_idx)
         pass
+
 
     dataset.close_cutmix()
 
     for img2, label2, c_idx2 in tqdm(dataset.train_loader):
+        #print(c_idx)
         pass
 
     for img, label, c_idx in tqdm(dataset.val_loader):

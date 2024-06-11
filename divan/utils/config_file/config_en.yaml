@@ -32,6 +32,10 @@ divanet:
                  "Eval_acc",          #Eval acc
                 ]
 
+##
+parse_task:
+  block_name: "Task_Inspector"
+
 ## chcek/check_file.py ##
 check_file:
   block_name: "Data_Inspector"        #Data Inspector

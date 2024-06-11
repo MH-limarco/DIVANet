@@ -18,18 +18,12 @@ class one_hot(Transform):
 
 class randomChoice(RandomChoice):
     def forward(self, *inputs):
-        idx = int(torch.multinomial(torch.tensor(self.p), 1))
-        transform = self.transforms[idx]
         long_input = True if len(inputs) >= 3 else False
-        if long_input:
-            img, label, c_idx = inputs
-        else:
-            img, label = inputs
-
-        img, label = transform(img, label)
+        idx = int(torch.multinomial(torch.tensor(self.p), 1))
+        img, label = self.transforms[idx](*inputs[:2])
 
         if long_input:
-            return img, label, c_idx
+            return img, label, inputs[2]
         else:
             return img, label
 
@@ -39,14 +33,9 @@ class identity(nn.Module):
         self.transform = transform
     def forward(self, *inputs):
         long_input = True if len(inputs) >= 3 else False
-        if long_input:
-            img, label, c_idx = inputs
-        else:
-            img, label = inputs
-
-        img, label = self.transform(img, label)
+        img, label = self.transform(*inputs[:2])
 
         if long_input:
-            return img, label, c_idx
+            return img, label, inputs[2]
         else:
             return img, label

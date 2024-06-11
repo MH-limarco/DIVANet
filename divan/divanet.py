@@ -22,10 +22,14 @@ state_PATH = 'HGNetv2.pt'
 #dataset = Dataset_Manager('dataset', batch_size=64, channels='RGB', RAM=True, shuffle=True)
 
 class model_Manager(nn.Module):
-    def __init__(self):
+    def __init__(self, model_setting,
+                 channels='RGB',
+                 seed=123
+                 ):
         super().__init__()
-        utils.apply_args(self)
+        apply_args(self)
         apply_config(self, __file__)
+
 
     def to(self):
         pass
@@ -56,15 +60,15 @@ class model_Manager(nn.Module):
     def _train_ready_device(self):
         pass
 
-    def _build_dataset(self
-                       ):
-        Dataset_Manager(dataset_path=self.dataset_path,
-                        channels=self.channels,
-                        size=self.size,
-                        batch_size=self.batch_size,
-                        pin_memory=self.pin_memory,
-                        RAM=True,
-                        shuffle=True,
+    def _build_dataset(self):
+        DM = Dataset_Manager(dataset_path=self.dataset_path,
+                             label_path=self.label_path,
+                             channels=self.channels,
+                             size=self.size,
+                             batch_size=self.batch_size,
+                             pin_memory=self.pin_memory,
+                             RAM=True,
+                             shuffle=True)
 
     def _train_close_cutmix(self):
         pass
