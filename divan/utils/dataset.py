@@ -137,7 +137,9 @@ class Dataset_Manager:
         self.mem = virtual_memory()
         self.RAM = False if not RAM else 'auto'
         self.pre_reading_worker = pre_reading_worker if pre_reading_worker >= 0 else cpu_count(logical=False)
+        self._ready()
 
+    def _ready(self):
         self._buildup_datasets()
         self._class_num()
         self.cutmix = v2.CutMix(num_classes=self.class_num)

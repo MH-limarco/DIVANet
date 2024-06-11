@@ -13,7 +13,7 @@ if __name__ == "__main__":
                         format=FORMAT)
     start = time.monotonic()
     dataset = Dataset_Manager('dataset', channels=None, RAM=False)
-    for i in tqdm(dataset.train_loader):
+    for img, c_idx, label in tqdm(dataset.train_loader):
         pass
     #dataset_load = DataLoader(dataset, batch_size=128, shuffle=False, num_workers=40)
     #for img, label, c_idx in tqdm(dataset_load):
