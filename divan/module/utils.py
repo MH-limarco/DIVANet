@@ -2,7 +2,8 @@ from torch import nn
 from torch.nn import functional as F
 import torch, math
 
-__all__ = ["make_divisible", "Flatten", "ChannelPool", "autopad", "Activations", "inlayer_resize"]
+__all__ = ["make_divisible", "Flatten", "ChannelPool", "autopad", "Activations",
+           "inlayer_resize", "fclayer_resize"]
 
 def make_divisible(x, divisor):
     """Returns nearest x divisible by divisor."""
@@ -50,7 +51,6 @@ def Activations(act_name):
     else:
         return getattr(nn, act_name)
 
-
 def inlayer_resize(model, in_channels=3):
     for name, layer in list(model.named_modules()):
         if isinstance(layer, nn.Conv2d):
@@ -65,9 +65,23 @@ def inlayer_resize(model, in_channels=3):
             setattr(sub_module, name_parts[-1], new_layer)
             return model
 
+def fclayer_resize(model, num_class=1000):
+    for name, layer in reversed(list(model.named_modules())):
+        if isinstance(layer, nn.Linear):
+            input_features = layer.in_features
+            new_layer = nn.Linear(input_features, num_class)
+
+            name_parts = name.split('.')
+            sub_module = model
+            for part in name_parts[:-1]:
+                sub_module = getattr(sub_module, part)
+            setattr(sub_module, name_parts[-1], new_layer)
+            return model
+
 if __name__ == '__main__':
-    from divan.module.backbone import torch_model
-    model = torch_model('resnet34')
-    print(inlayer_resize(model, 1))
+    from divan.module.backbone import vision_backbone
+    model = vision_backbone('resnet34')
+    print(fclayer_resize(model, 50))
+
 
 

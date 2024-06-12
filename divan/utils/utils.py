@@ -20,6 +20,8 @@ def apply_kwargs(_class, kargs):
         setattr(_class, arg, value)
 
 
+
+
 if __name__ == '__main__':
     class test_class:
         def __init__(self, d=None):

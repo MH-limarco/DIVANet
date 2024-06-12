@@ -22,7 +22,7 @@ __all__ = ["vision_backbone", "timm_backbone"]
 
 backbone_config = read_config(__file__)
 
-def vision_backbone(model, weights=False, in_channels=3):
+def vision_backbone(model, weights=False, in_channels=3, num_class=1000):
     if type(model) == str:
         try:
             model = getattr(torchvision.models, model)
@@ -40,13 +40,13 @@ def vision_backbone(model, weights=False, in_channels=3):
         logging.warning(f'{backbone_config["block_name"]}: weights not exist')
 
     finally:
-        logging.info(f'{backbone_config["block_name"]}: Loading model - {model.__name__}')
+        logging.info(f'{backbone_config["block_name"]}: Loading model - {model.__class__.__name__}')
         logging.info(f'{backbone_config["block_name"]}: Loading weights - {weights}')
 
     model = inlayer_resize(model, in_channels)
     return model
 
-def timm_backbone(model, weights=False, in_channels=3):
+def timm_backbone(model, weights=False, in_channels=3, num_class=1000):
     try:
         model = timm.create_model(model, pretrained=weights)
 
@@ -63,8 +63,6 @@ def timm_backbone(model, weights=False, in_channels=3):
         logging.info(f'{backbone_config["block_name"]}: Loading weights - {weights}')
     model = inlayer_resize(model, in_channels)
     return model
-
-
 
 if __name__ == '__main__':
     FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'

@@ -1,4 +1,4 @@
-import contextlib, inspect, yaml, ast, re, logging
+import contextlib, inspect, ast, logging
 import torch.nn as nn
 
 from divan.module.utils import *
@@ -13,12 +13,11 @@ from divan.utils.config import *
 from divan.utils.utils import *
 
 class Divanet_model(nn.Module):
-    def __init__(self, _dict, _input_channels, device):
+    def __init__(self, _dict, _input_channels):
         super().__init__()
         apply_args(self)
         apply_config(self, __file__)
         self.sequential, self.save_idx, self.fc_resize = self._parse_step(_dict, _input_channels)
-        self.device = device
 
     def forward(self, x):
         out = {-1: x}
@@ -70,7 +69,7 @@ class Divanet_model(nn.Module):
 
         for i, (f, n, m, args) in enumerate(full_dict):  # from, number, module, args
             assert max([f] if isinstance(f, int) else f) < i
-            m = m.split('_') if m not in ['torch_model', 'timm_model'] else [m]
+            m = m.split('_') if m not in ['vision_backbone', 'timm_backbone'] else [m]
             if len(m) == 2:
                 if 'KA' in m[1] and 'NConv' in m[1]:
                     m, _conv = m[0] + '_KAN', m[1]
@@ -123,10 +122,11 @@ class Divanet_model(nn.Module):
 
             elif m in [vision_backbone, timm_backbone]:
                 _arg = inspect.getfullargspec(m)[0]
-
-                args.insert(_arg.index("usage_args"), ch[f])
-                args.insert(_arg.index("num_classes"), num_class)
-                c2 = ch[f]
+                if len(args) == 1:
+                    args += [False]
+                args.insert(_arg.index("in_channels"), ch[f])
+                args.insert(_arg.index("num_class"), num_class)
+                c2 = num_class
             else:
                 c2 = ch[f]
 

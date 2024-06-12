@@ -15,6 +15,7 @@ import numpy as np
 from divan.check import *
 from divan.utils import *
 from divan.module import *
+from divan.parse_task import *
 
 warnings.simplefilter("ignore")
 state_PATH = 'HGNetv2.pt'
@@ -25,6 +26,7 @@ class model_Manager(nn.Module):
     def __init__(self, model_setting,
                  channels='RGB',
                  amp=True,
+                 device='cuda',
                  seed=123
                  ):
         super().__init__()
@@ -33,10 +35,15 @@ class model_Manager(nn.Module):
         self.glob_amp = amp
 
         self.set_seed(seed)
-
-        #read_model()
+        if model_setting.endswith('.pt'):
+            self._load_state(model_setting)
+            #train/{self.model_setting.split('.')[0]}/weight/best.pt
+        else:
+            self._read_model()
     def to(self, device):
         assert hasattr(self, 'model')
+        device = self._ready_device(device)
+
         self.model = self.model.to(device)
 
         if hasattr(self, 'ema'):
@@ -47,25 +54,11 @@ class model_Manager(nn.Module):
         with torch.autocast(device_type=self.device):
             return self.model(x.float().to(self.device))
 
-    def fit(self):
+    def fit(self, ):
         pass
 
     def valid(self):
         pass
-
-    def _fc_layer_resize(self, class_num=None):
-        class_num = self.class_num if class_num is None else class_num
-        for name, layer in reversed(list(self.model.named_modules())):
-            if isinstance(layer, nn.Linear):
-                input_features = layer.in_features
-                new_layer = nn.Linear(input_features, class_num)
-
-                name_parts = name.split('.')
-                sub_module = self.model
-                for part in name_parts[:-1]:
-                    sub_module = getattr(sub_module, part)
-                setattr(sub_module, name_parts[-1], new_layer)
-                break
 
     def _read_model(self):
         raise NotImplementedError
@@ -74,28 +67,37 @@ class model_Manager(nn.Module):
         self.state_dict = {'model_setting': self.model_setting,
                            'num_class': self.num_class,
                            'epoch': epoch,
-                           'model': self.model.state_dict(),
-                           'optimizer': self.optimizer.state_dict(),
-                           'scheduler': self.scheduler.state_dict(),
-                           'ema': self.ema.state_dict(),
-                           'ema_scheduler': self.swa_scheduler.state_dict()
+                           'model_dict': self.model.state_dict(),
+                           'ema_dict': self.ema.state_dict(),
+                           'optimizer_dict': self.optimizer.state_dict(),
+                           'scheduler_dict': self.scheduler.state_dict(),
+                           'ema_scheduler_dict': self.swa_scheduler.state_dict()
                            }
 
         torch.save(self.state_dict, self.state_PATH)
 
     def _load_state(self, state_PATH=None):
         assert state_PATH.endswith('.pt')
-        self.state_dict = torch.load(self.state_PATH if state_PATH is None else state_PATH)
+        state_PATH = self.state_PATH if state_PATH is None else state_PATH
+        self.state_dict = torch.load(state_PATH)
         apply_kwargs(self, self.state_dict)
 
-        #_read_model
-        #_load_model
+        self._read_model()
+        self._load_model()
     def _load_model(self):
-        pass
-        #self.state_dict
+        self.model.load_state_dict(self.model_dict)
+        self.ema.load_state_dict(self.ema_dict)
+        self.optimizer.load_state_dict(self.optimizer_dict)
+        self.scheduler.load_state_dict(self.scheduler_dict)
+        self.swa_scheduler.load_state_dict(self.ema_scheduler_dict)
 
-    def _train_ready_device(self):
-        pass
+    def _ready_device(self, device=None):
+        device = self.device.split(':') if device is None else device.split(':')
+        device, cuda_idx = device if len(device) > 1 else [device, None]
+        device = device if torch.cuda.is_available() and device != 'cpu' else 'cpu'
+        cuda_idx = f':{cuda_idx}' if cuda_idx is not None and device != 'cpu' else cuda_idx
+        return chose_cuda(device) if cuda_idx is None else f'{self._device}{self.cuda_idx}'
+
 
     def _build_dataset(self):
         Dataset = Dataset_Manager(dataset_path=self.dataset_path,
@@ -171,5 +173,44 @@ class model_Manager(nn.Module):
             torch.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
 
+class DIVAN(model_Manager):
+    def _read_model(self):
+        self.label_smoothing = 0.1
+        self.lr = 0.0005
+        self.weight_decay = 0
+        self.epochs = 0
+        self.state_PATH = self.save_PATH + f"train/{self.model_setting.split('.')[0]}/weight/best.pt"
+
+        self.yaml = self._read_yaml(self.model_setting.split('.yaml')[0])
+        self.yaml["nc"] = self.num_class if hasattr(self, "num_class") else self.yaml["nc"]
+        print(self.yaml["nc"])
+        intput_channels = len(self.channels) if self.channels != 'auto' else self.channels
+
+        self.model = Divanet_model(self.yaml, intput_channels)
+
+        self.ema = AveragedModel(self.model)
+
+        self.loss_function = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(),
+                                           lr=self.lr,
+                                           weight_decay=self.weight_decay)
+
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.epochs, eta_min=self.lr/25, last_epoch=-1)
+        self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
+
+        try:
+            self.scaler = getattr(torch, self.device_use).amp.GradScaler(enabled=self.amp)
+        except:
+            self.scaler = None
+
+        self._save_state(0)
+
+
+    def _read_yaml(self, yaml_path):
+        with open(f'{self.cfg_PATH}{yaml_path}.yaml', 'r', encoding="utf-8") as stream:
+            return yaml.safe_load(stream)
+
+
 if __name__ == "__main__":
-    model_Manager()
+    pass
+    #model_Manager()
