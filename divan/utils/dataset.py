@@ -15,15 +15,14 @@ from divan.utils.log import *
 from divan.utils.transformer import *
 from divan.utils.utils import *
 
-
-
-
 class DIVANetDataset(Dataset):
     def __init__(self,
                  file_name,
                  label_txt,
                  size=224,
                  channels=None,
+                 fix_mean=False,
+                 cut_channels=False,
                  random_p=0.8,
                  max_channels=3,
                  ):
@@ -35,9 +34,13 @@ class DIVANetDataset(Dataset):
         apply_config(self, __file__)
 
         self.transforms[0].size = (self.size, self.size) if isinstance(self.size, int) else self.size
-        output_transform = [v2.ToDtype(getattr(torch, self.image_dtype), scale=True)]
-        self.transforms = v2.Compose(self.transforms + output_transform)
+        self.transforms[-1].size = getattr(torch, self.image_dtype)
+        self.transforms[-1].scale = True
+        #output_transform = [v2.ToDtype(getattr(torch, self.image_dtype), scale=True)]
+        self.transforms = v2.Compose(self.transforms) # + output_transform
         self.RAM = False
+        self.fix_mean = True if fix_mean else False
+        self.cut_channels = cut_channels if isinstance(channels, str) else False
 
         self.Dataset_PATH = self.Dataset_PATH + f"{file_name}"
         self._read_data()
@@ -68,22 +71,25 @@ class DIVANetDataset(Dataset):
 
         channels_idx = self.channels_adj[idx] if self.adj_use_idx else self.channels_adj
         if channels_idx.sum() == 0:
-
             channels_idx[torch.randint(self.max_channels, (1,))[0]] = 1
 
-        if self.adj_use_idx:
-            channels_adj = torch.argwhere(channels_idx < 1).flatten()
-        else:
-            channels_adj = torch.argwhere(channels_idx < 1)
+        channels_adj = torch.argwhere(channels_idx < 1).flatten()
+        _channels = torch.argwhere(channels_idx >= 1).flatten()
 
         img = read_image(img_path)
         if img.shape[0] == 1:
             img = img.repeat(3, 1, 1)
         img = self.transforms(img)
 
-        img[channels_adj] = 0
+        if not self.cut_channels:
+            if len(channels_adj) > 0:
+                _fix = torch.mean(img[_channels].float(), dim=0).byte() if self.fix_mean else 0
+                img[channels_adj] = _fix
 
-        return img, int(label), channels_idx.bool()
+        else:
+            img = img[_channels]
+
+        return img, int(label)
 
     def _updata_img_label(self, img_label):
         self.img_label = img_label
@@ -113,6 +119,8 @@ class Dataset_Manager:
                  pin_memory=False,
                  shuffle=True,
                  silence=False,
+                 fix_mean=False,
+                 cut_channels=False,
                  random_p=0.8,
                  num_workers=-1,
                  RAM='auto',
@@ -122,6 +130,7 @@ class Dataset_Manager:
                  ):
         assert isinstance(label_path, (tuple, list)) and len(label_path) >= 2
         assert isinstance(size, (int, list, tuple))
+
 
         apply_args(self)
         apply_config(self, __file__)
@@ -153,14 +162,23 @@ class Dataset_Manager:
     def _buildup_datasets(self):
         _channels = self.channels if isinstance(self.channels,
                                                 (tuple, list)) else [self.channels] * len(self.label_path)
+
+        _fix_mean = self.fix_mean if isinstance(self.fix_mean,
+                                                (tuple, list)) else [self.fix_mean] * len(self.label_path)
+
+        _cut_channels = self.cut_channels if isinstance(self.cut_channels,
+                                                        (tuple, list)) else [self.cut_channels] * len(self.label_path)
+
         idx_ls = list(range(len(self.data_name)))
-        idx_ls[-1] = 2 if len(self.label_path) >= 3 else 1
+        idx_ls[-1] = -1
 
         for idx, name in zip(idx_ls, self.data_name):
             _dataset = DIVANetDataset(self.dataset_path, self.label_path[idx],
                                       size=self.size,
                                       random_p=self.random_p,
-                                      channels=_channels[idx]
+                                      channels=_channels[idx],
+                                      fix_mean=_fix_mean[idx],
+                                      cut_channels=_cut_channels[idx],
                                       )
             setattr(self, f"{name}_Data", _dataset)
 
@@ -170,22 +188,23 @@ class Dataset_Manager:
     def _build_loader(self):
         for idx, (_dataset, name) in enumerate(zip(self.Data_list, self.data_name)):
             collate_fn = self._collate_eval if (idx > 0 or self.cutmix_p<=0) else self._collate_train
+            num_workers = min(0 if self.RAM else self.num_workers, 10)
             loader = DataLoader(_dataset,
                                 batch_size=self.batch_size,
                                 pin_memory=self.pin_memory,
                                 shuffle=self.shuffle,
-                                num_workers= min(0 if self.RAM else self.num_workers, 10),
-                                collate_fn= collate_fn
+                                num_workers=num_workers,
+                                collate_fn=collate_fn
                                 )
             setattr(self, f"{name}_loader", loader)
 
     def _setup_cutmix(self):
         p = [self.cutmix_p, 1-self.cutmix_p]
         if self.cutmix_p > 0:
-            self.out_train = randomChoice([self.cutmix, self.one_hot], p=p)
+            self.out_train = v2.RandomChoice([self.cutmix, self.one_hot], p=p)
         else:
-            self.out_train = identity(self.one_hot)
-        self.out_eval = identity(self.one_hot)
+            self.out_train = self.one_hot
+        self.out_eval = self.one_hot
 
     def _collate_train(self, batch):
         return self.out_train(*default_collate(batch))
@@ -238,10 +257,10 @@ class Dataset_Manager:
         #self.collate_fn_use = False if self.full_preload else self.collate_fn_use
         self._build_loader()
 
-    def _pre_loading_step(self, _dataset, show, cutmix=False):
+    def _pre_loading_step(self, _dataset, show):
         set_sharing_strategy('file_system')
         batch_size = 128
-        img_ls, c_idx_ls, label_ls = [], [], []
+        img_ls, label_ls = [], []
         loader = DataLoader(_dataset,
                             batch_size=batch_size,
                             shuffle=self.shuffle,
@@ -250,16 +269,15 @@ class Dataset_Manager:
 
         desc = f"{self.block_name}: Dataset pre-loading"
         pbar = tqdm(loader, desc=desc, ncols=self.ncols) if show else loader
-        for img, label, c_idx in pbar:
+        for img, label in pbar:
             img_ls.append(img)
             label_ls.append(label)
-            c_idx_ls.append(c_idx)
 
         set_sharing_strategy('file_descriptor')
         imgs = torch.cat(img_ls, dim=0)
         labels = torch.cat(label_ls, dim=0)
-        c_idxs = torch.cat(c_idx_ls, dim=0)
-        img_label = list(zip(imgs, labels, c_idxs))
+
+        img_label = list(zip(imgs, labels))
         _dataset._updata_img_label(img_label)
 
 

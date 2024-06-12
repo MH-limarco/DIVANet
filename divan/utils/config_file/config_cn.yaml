@@ -1,10 +1,13 @@
 #
 ## 123  ##
-divanet2:
-
+base:
   Dataset_PATH: "dataset/"
+
   cfg_PATH: "cfg/"
+
   save_PATH: "run/"
+
+  data_name: ['train', 'val', 'test']
 
 ##  divanet.py  ##
 divanet:
@@ -32,6 +35,10 @@ divanet:
                  "Eval_acc",          #Eval acc
                 ]
 
+##  parse_task.py  ##
+parse_task:
+  block_name: "Task_Inspector"
+
 ## chcek/check_file.py ##
 check_file:
   block_name: "Data_Inspector"        #Data Inspector
@@ -58,8 +65,6 @@ dataset:
   image_dtype: uint8
 
   RGB_index: ['R', 'G', 'B']
-
-  data_name: ['train', 'val', 'test']
 
   system_info: ["num_workers",        #num workers
                 "RAM_limit"           #RAM limit

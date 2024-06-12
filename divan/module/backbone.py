@@ -1,8 +1,8 @@
-import torchvision, logging
 import torch.nn as nn
-import torch, timm
+import torch
 
-import contextlib, inspect, yaml, ast, re
+import contextlib, logging, inspect, yaml, ast, re
+import torchvision
 
 from divan.module.kan_convs import *
 from divan.module.block import *
@@ -11,57 +11,57 @@ from divan.module.utils import *
 from divan.module.attention import *
 from divan.module.head import *
 
-block_name = 'backbone'
+from divan.utils.config import *
 
-__all__ = ["torch_model", "timm_model"]
+try:
+    import timm
+except:
+    pass
 
-def torch_model(model, usage_args=False, num_classes=50):
-    weights = usage_args if usage_args is not False else None
+__all__ = ["vision_backbone", "timm_backbone"]
+
+backbone_config = read_config(__file__)
+
+def vision_backbone(model, weights=False, in_channels=3):
     if type(model) == str:
         try:
             model = getattr(torchvision.models, model)
 
         except:
-            logging.warning(f'{block_name}: model not exist')
+            logging.warning(f'{backbone_config["block_name"]}: model not exist')
             return None
 
-    if not isinstance(usage_args, int):
+    try:
+        model = model(weights=weights)
 
-        try:
-            model = model(weights=weights)
+    except:
+        model = model(weights='DEFAULT')
+        weights= 'DEFAULT'
+        logging.warning(f'{backbone_config["block_name"]}: weights not exist')
 
-        except:
-            model = model(weights='DEFAULT')
-            weights= 'DEFAULT'
-            logging.warning(f'{block_name}: weights not exist')
+    finally:
+        logging.info(f'{backbone_config["block_name"]}: Loading model - {model.__name__}')
+        logging.info(f'{backbone_config["block_name"]}: Loading weights - {weights}')
 
-        finally:
-            logging.info(f'{block_name}: Loading model - {model.__name__}')
-            logging.info(f'{block_name}: Loading weights - {weights}')
-
-    else:
-        model = inlayer_resize(model(False), usage_args)
+    model = inlayer_resize(model, in_channels)
     return model
 
-def timm_model(model, usage_args=False, num_classes=50):
-    weights = usage_args if usage_args is not False else None
-    if type(model) == str:
-        try:
-            model = timm.create_model(model, pretrained=weights, num_classes=num_classes)
+def timm_backbone(model, weights=False, in_channels=3):
+    try:
+        model = timm.create_model(model, pretrained=weights)
 
+    except:
+        try:
+            model = timm.create_model(model, pretrained=False)
+            weights = False
+            logging.warning(f'{backbone_config["block_name"]}: weights not exist')
         except:
-            try:
-                model = timm.create_model(model, pretrained=False, num_classes=num_classes)
-                weights = False
-                logging.warning(f'{block_name}: weights not exist')
-            except:
-                logging.warning(f'{block_name}: model not exist')
-                return None
-        finally:
-            logging.info(f'{block_name}: Loading model - {model.__class__.__name__}')
-            logging.info(f'{block_name}: Loading weights - {weights}')
-    else:
-        model = timm.create_model(model, in_chans=usage_args, num_classes=num_classes)
+            logging.warning(f'{backbone_config["block_name"]}: model not exist')
+            return None
+    finally:
+        logging.info(f'{backbone_config["block_name"]}: Loading model - {model.__class__.__name__}')
+        logging.info(f'{backbone_config["block_name"]}: Loading weights - {weights}')
+    model = inlayer_resize(model, in_channels)
     return model
 
 
@@ -69,7 +69,6 @@ def timm_model(model, usage_args=False, num_classes=50):
 if __name__ == '__main__':
     FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'
     logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt='%Y-%m-%d %H:%M')
-    print(torch_model('resnet34'))
 
 
 

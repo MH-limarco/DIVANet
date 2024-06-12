@@ -6,6 +6,8 @@ base:
 
   save_PATH: "run/"
 
+  data_name: ['train', 'val', 'test']
+
 ##  divanet.py  ##
 divanet:
   block_name: "Model_Manager"       #Model Manager
@@ -32,7 +34,7 @@ divanet:
                  "Eval_acc",          #Eval acc
                 ]
 
-##
+##  parse_task.py  ##
 parse_task:
   block_name: "Task_Inspector"
 
@@ -62,8 +64,6 @@ dataset:
   image_dtype: uint8
 
   RGB_index: ['R', 'G', 'B']
-
-  data_name: ['train', 'val', 'test']
 
   system_info: ["num_workers",        #num workers
                 "RAM_limit"           #RAM limit

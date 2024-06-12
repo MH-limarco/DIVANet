@@ -19,7 +19,7 @@ from divan.module import *
 warnings.simplefilter("ignore")
 state_PATH = 'HGNetv2.pt'
 
-#dataset = Dataset_Manager('dataset', batch_size=64, channels='RGB', RAM=True, shuffle=True)
+#dataset = Dataset_Manager('dataset', batch_size=64, channels=[None, 'RG'], cut_channels=[True, False], fix_mean=[True, True], RAM=True, shuffle=True)
 
 class model_Manager(nn.Module):
     def __init__(self, model_setting,
@@ -27,12 +27,16 @@ class model_Manager(nn.Module):
                  seed=123
                  ):
         super().__init__()
-        apply_args(self)
         apply_config(self, __file__)
+        apply_args(self)
 
+        #read_model()
+    def to(self, device):
+        assert hasattr(self, 'model')
+        self.model = self.model.to(device)
 
-    def to(self):
-        pass
+        if hasattr(self, 'ema'):
+            self.ema = self.ema.to(device)
 
     def forward(self, x):
         pass

@@ -9,26 +9,28 @@ from divan.module.conv import *
 from divan.module.head import *
 from divan.module.kan_convs import *
 
-class parse_model(nn.Module):
+from divan.utils.config import *
+from divan.utils.utils import *
+
+class Divanet_model(nn.Module):
     def __init__(self, _dict, _input_channels, device):
         super().__init__()
+        apply_args(self)
+        apply_config(self, __file__)
         self.sequential, self.save_idx, self.fc_resize = self._parse_step(_dict, _input_channels)
         self.device = device
 
-    def forward(self, x, index=None):
-        x = self.input_layer(x, index)
+    def forward(self, x):
         out = {-1: x}
         for module in self.sequential:
             save_i = [-1] + [i for i in module.f if i in self.save_idx]
-            out.update(out.fromkeys(save_i, module([out[k].to(self.device) for k in module.f] if len(module.f) > 1 else out[module.f[0]].to(self.device))))
+            _input = [out[k] for k in module.f] if len(module.f) > 1 else out[module.f[0]]
+            _output = module(_input)
+            out.update(out.fromkeys(save_i, _output))
+
         return out[-1]
 
-    def input_layer(self, x, index):
-        return x
-
-    @staticmethod
-    def _parse_step(_dict, _input_channels, input_pool='Pool_Conv'): # model_dict, input_channels(3)
-
+    def _parse_step(self, _dict, _input_channels, input_pool='Pool_Conv'): # model_dict, input_channels(3)
         max_channels = float("inf")
         fc_resize = True
         num_class, act, scales, c1_pool = (_dict.get(x) for x in ("nc", "activation", "scales","c1_pool"))
@@ -37,7 +39,7 @@ class parse_model(nn.Module):
             scale = _dict.get("scale")
             if not scale:
                 scale = tuple(scales.keys())[0]
-            logging.info(f"{block_name}: Assuming scale='{scale}'")
+            logging.info(f"{self.block_name}: Assuming scale='{scale}'")
                 # LOGGER.warning(f"WARNING ⚠️ no model scale passed. Assuming scale='{scale}'.")
             depth, width, max_channels = scales[scale]
 
@@ -120,10 +122,11 @@ class parse_model(nn.Module):
                 c2 = sum(ch[x] for x in f)
 
             elif m in [torch_model, timm_model]:
-                if _input_channels == "auto":
-                    _arg = inspect.getfullargspec(m)[0]
-                    args.insert(_arg.index("usage_args"), 1)
-                    args.insert(_arg.index("num_classes"), num_class)
+                _arg = inspect.getfullargspec(m)[0]
+
+                args.insert(_arg.index("usage_args"), ch[f])
+                args.insert(_arg.index("num_classes"), num_class)
+
                 if m == timm_model:
                     fc_resize = False
                 c2 = ch[f]
