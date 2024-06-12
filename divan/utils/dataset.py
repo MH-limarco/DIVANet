@@ -131,7 +131,6 @@ class Dataset_Manager:
         assert isinstance(label_path, (tuple, list)) and len(label_path) >= 2
         assert isinstance(size, (int, list, tuple))
 
-
         apply_args(self)
         apply_config(self, __file__)
         self.mem = virtual_memory()
@@ -254,7 +253,6 @@ class Dataset_Manager:
         for idx, dataset in enumerate(self.Data_list):
             self._pre_loading_step(dataset, show, False if idx > 0 else True)
         self.shuffle = False
-        #self.collate_fn_use = False if self.full_preload else self.collate_fn_use
         self._build_loader()
 
     def _pre_loading_step(self, _dataset, show):

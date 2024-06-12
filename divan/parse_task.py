@@ -27,7 +27,6 @@ class Divanet_model(nn.Module):
             _input = [out[k] for k in module.f] if len(module.f) > 1 else out[module.f[0]]
             _output = module(_input)
             out.update(out.fromkeys(save_i, _output))
-
         return out[-1]
 
     def _parse_step(self, _dict, _input_channels, input_pool='Pool_Conv'): # model_dict, input_channels(3)
@@ -93,7 +92,8 @@ class Divanet_model(nn.Module):
                     with contextlib.suppress(ValueError):
                         args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
 
-            if m not in [nn.BatchNorm2d, Concat, torch_model, timm_model,
+            if m not in [nn.BatchNorm2d, Concat,
+                         vision_backbone, timm_backbone,
                          ChannelAttention, SpatialAttention, CBAM
                          ]:
                 c1, c2 = ch[f], args[0]
@@ -121,16 +121,12 @@ class Divanet_model(nn.Module):
             elif m is Concat:
                 c2 = sum(ch[x] for x in f)
 
-            elif m in [torch_model, timm_model]:
+            elif m in [vision_backbone, timm_backbone]:
                 _arg = inspect.getfullargspec(m)[0]
 
                 args.insert(_arg.index("usage_args"), ch[f])
                 args.insert(_arg.index("num_classes"), num_class)
-
-                if m == timm_model:
-                    fc_resize = False
                 c2 = ch[f]
-
             else:
                 c2 = ch[f]
 

@@ -24,11 +24,15 @@ state_PATH = 'HGNetv2.pt'
 class model_Manager(nn.Module):
     def __init__(self, model_setting,
                  channels='RGB',
+                 amp=True,
                  seed=123
                  ):
         super().__init__()
         apply_config(self, __file__)
         apply_args(self)
+        self.glob_amp = amp
+
+        self.set_seed(seed)
 
         #read_model()
     def to(self, device):
@@ -43,36 +47,74 @@ class model_Manager(nn.Module):
         with torch.autocast(device_type=self.device):
             return self.model(x.float().to(self.device))
 
-    def fit(self, ):
+    def fit(self):
         pass
 
     def valid(self):
         pass
 
-    def _fc_layer_resize(self):
-        pass
+    def _fc_layer_resize(self, class_num=None):
+        class_num = self.class_num if class_num is None else class_num
+        for name, layer in reversed(list(self.model.named_modules())):
+            if isinstance(layer, nn.Linear):
+                input_features = layer.in_features
+                new_layer = nn.Linear(input_features, class_num)
+
+                name_parts = name.split('.')
+                sub_module = self.model
+                for part in name_parts[:-1]:
+                    sub_module = getattr(sub_module, part)
+                setattr(sub_module, name_parts[-1], new_layer)
+                break
 
     def _read_model(self):
         raise NotImplementedError
 
     def _save_state(self, epoch):
-        pass
+        self.state_dict = {'model_setting': self.model_setting,
+                           'num_class': self.num_class,
+                           'epoch': epoch,
+                           'model': self.model.state_dict(),
+                           'optimizer': self.optimizer.state_dict(),
+                           'scheduler': self.scheduler.state_dict(),
+                           'ema': self.ema.state_dict(),
+                           'ema_scheduler': self.swa_scheduler.state_dict()
+                           }
+
+        torch.save(self.state_dict, self.state_PATH)
 
     def _load_state(self, state_PATH=None):
+        assert state_PATH.endswith('.pt')
+        self.state_dict = torch.load(self.state_PATH if state_PATH is None else state_PATH)
+        apply_kwargs(self, self.state_dict)
+
+        #_read_model
+        #_load_model
+    def _load_model(self):
         pass
+        #self.state_dict
 
     def _train_ready_device(self):
         pass
 
     def _build_dataset(self):
-        DM = Dataset_Manager(dataset_path=self.dataset_path,
-                             label_path=self.label_path,
-                             channels=self.channels,
-                             size=self.size,
-                             batch_size=self.batch_size,
-                             pin_memory=self.pin_memory,
-                             RAM=True,
-                             shuffle=True)
+        Dataset = Dataset_Manager(dataset_path=self.dataset_path,
+                                  label_path=self.label_path,
+                                  channels=self.channels,
+                                  size=self.size,
+                                  batch_size=self.batch_size,
+                                  pin_memory=self.pin_memory,
+                                  shuffle=self.shuffle,
+                                  silence=self.silence,
+                                  fix_mean=self.fix_mean,
+                                  cut_channels=self.cut_channels,
+                                  random_p=self.random_p,
+                                  num_workers=self.num_workers,
+                                  RAM=self.RAM,
+                                  cutmix_p=self.cutmix_p,
+                                  ncols=self.ncols,
+                                  RAM_lim=self.RAM_lim
+                                  )
 
     def _train_close_cutmix(self):
         pass
@@ -112,9 +154,9 @@ class model_Manager(nn.Module):
 
     def loader_perf(self, loader):
         start = time.monotonic()
-        for data in tqdm(loader, desc=f"|{block_name} - speed test|"):
+        for data in tqdm(loader, desc=f"|{self.block_name} - speed test|"):
             _ = data
-        logging.debug(f"{block_name}: RAM loader loop time: {round(time.monotonic()-start, 2)}s")
+        logging.debug(f"{self.block_name}: RAM loader loop time: {round(time.monotonic()-start, 2)}s")
 
     @staticmethod
     def table_with_fix(col, fix_len=13):
@@ -123,7 +165,7 @@ class model_Manager(nn.Module):
 
     @staticmethod
     def set_seed(seed):
-        if seed is not None:
+        if isinstance(seed, int):
             random.seed(seed)
             np.random.seed(seed)
             torch.manual_seed(seed)
