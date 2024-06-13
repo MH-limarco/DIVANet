@@ -155,6 +155,7 @@ class Dataset_Manager:
 
     def close_cutmix(self):
         assert hasattr(self, "Data_list")
+        logging.info(f"{self.block_name}: Closing CutMix")
         self.cutmix_p = 0
         self._build_loader()
 

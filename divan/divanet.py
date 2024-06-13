@@ -67,6 +67,7 @@ class model_Manager(nn.Module):
             silence=False,
             fix_mean=False,
             cut_channels=False,
+            last_cutmix_close=10,
             random_p=0.8,
             num_workers=-1,
             RAM='auto',
@@ -105,7 +106,7 @@ class model_Manager(nn.Module):
             self.scaler = None
 
         best_loss = float('inf')
-        for epoch in range(self.epoch, self.epochs):
+        for epoch in range(self.epoch, self.epochs - last_cutmix_close):
             self._training_step(epoch)
             self._save_state(epoch)
             if best_loss > self.eval_loss:
@@ -116,6 +117,13 @@ class model_Manager(nn.Module):
 
             if step_count > self.early_stopping:
                 break
+
+        self.Dataset.close_cutmix()
+        for _epoch in range(self.last_cutmix_close):
+            self._training_step(_epoch+epoch+1)
+            self._save_state(_epoch+epoch+1)
+            if best_loss > self.eval_loss:
+                self._save_state(_epoch+epoch, best=True)
 
         self._load_state()
         self._testing_step()
@@ -135,7 +143,7 @@ class model_Manager(nn.Module):
                       'num_class': self.num_class,
                       'epoch': [epoch, self.epochs],
                       'model_dict': self.model.state_dict(),
-                      'ema_used': epoch >= self.ema_start
+                      'ema_used': epoch >= self.ema_start,
                       'ema_dict': self.ema.state_dict(),
                       'optimizer_dict': self.optimizer.state_dict(),
                       'scheduler_dict': self.scheduler.state_dict(),
