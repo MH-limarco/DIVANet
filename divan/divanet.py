@@ -135,6 +135,7 @@ class model_Manager(nn.Module):
                       'num_class': self.num_class,
                       'epoch': [epoch, self.epochs],
                       'model_dict': self.model.state_dict(),
+                      'ema_used': epoch >= self.ema_start
                       'ema_dict': self.ema.state_dict(),
                       'optimizer_dict': self.optimizer.state_dict(),
                       'scheduler_dict': self.scheduler.state_dict(),
@@ -205,10 +206,10 @@ class model_Manager(nn.Module):
             self.optimizer.zero_grad()
             img = img.float().to(self.device, non_blocking=dataloader.pin_memory)
             label = label.to(self.device, non_blocking=dataloader.pin_memory)
-
+            ema_used = self.ema_used if hasattr(self, "ema_used") else epoch >= self.ema_start
             with torch.autocast(device_type=self.device_use, enabled=self.amp, dtype=torch.float16):
                 with torch.set_grad_enabled(_training):
-                    module = self.ema if not _training and self.ema and epoch >= self.ema_start else self.model
+                    module = self.ema if not _training and ema_used else self.model
                     out = module(img)
                     loss = self.loss_function(out, label)
 
