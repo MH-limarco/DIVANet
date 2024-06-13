@@ -251,7 +251,7 @@ class Dataset_Manager:
     def _pre_loading(self, show=True):
         assert hasattr(self, 'Data_list')
         for idx, dataset in enumerate(self.Data_list):
-            self._pre_loading_step(dataset, show, False if idx > 0 else True)
+            self._pre_loading_step(dataset, show)
         self.shuffle = False
         self._build_loader()
 

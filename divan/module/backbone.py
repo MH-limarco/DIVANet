@@ -42,8 +42,8 @@ def vision_backbone(model, weights=False, in_channels=3, num_class=1000):
     finally:
         logging.info(f'{backbone_config["block_name"]}: Loading model - {model.__class__.__name__}')
         logging.info(f'{backbone_config["block_name"]}: Loading weights - {weights}')
-
     model = inlayer_resize(model, in_channels)
+    model = fclayer_resize(model, num_class)
     return model
 
 def timm_backbone(model, weights=False, in_channels=3, num_class=1000):
@@ -62,6 +62,7 @@ def timm_backbone(model, weights=False, in_channels=3, num_class=1000):
         logging.info(f'{backbone_config["block_name"]}: Loading model - {model.__class__.__name__}')
         logging.info(f'{backbone_config["block_name"]}: Loading weights - {weights}')
     model = inlayer_resize(model, in_channels)
+    model = fclayer_resize(model, num_class)
     return model
 
 if __name__ == '__main__':
