@@ -54,9 +54,11 @@ def Activations(act_name):
 def inlayer_resize(model, in_channels=3):
     for name, layer in list(model.named_modules()):
         if isinstance(layer, nn.Conv2d):
-            out_channels = layer.out_channels
-            kernel_size = layer.kernel_size
-            new_layer = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size)
+            new_layer = nn.Conv2d(in_channels, layer.out_channels,
+                                  kernel_size=layer.kernel_size,
+                                  stride=layer.stride,
+                                  padding=layer.padding,
+                                  bias=False if layer is None else True)
 
             name_parts = name.split('.')
             sub_module = model
@@ -65,11 +67,11 @@ def inlayer_resize(model, in_channels=3):
             setattr(sub_module, name_parts[-1], new_layer)
             return model
 
+
 def fclayer_resize(model, num_class=1000):
     for name, layer in reversed(list(model.named_modules())):
         if isinstance(layer, nn.Linear):
-            input_features = layer.in_features
-            new_layer = nn.Linear(input_features, num_class)
+            new_layer = nn.Linear(layer.in_features, out_features=num_class, bias=False if layer is None else True)
 
             name_parts = name.split('.')
             sub_module = model

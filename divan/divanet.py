@@ -56,9 +56,12 @@ class model_Manager(nn.Module):
     def fit(self, dataset_path, epochs,
             label_path=["train.txt", "val.txt", "test.txt"],
             size=224,
-            batch_size=32,
-            AMP=True,
+            batch_size=128,
             EMA=True,
+            lr=1e-3,
+            early_stopping=15,
+            label_smoothing=0.1,
+            weight_decay=0,
             pin_memory=False,
             shuffle=True,
             silence=False,
@@ -77,17 +80,45 @@ class model_Manager(nn.Module):
         dataset_class_num = self.Dataset.class_num
         if hasattr(self, 'class_num'):
             if dataset_class_num != self.class_num:
-                self.class_num = dataset_class_num
-                self._fclayer_resize(self.class_num)
+                self.num_class = dataset_class_num
+                self._fclayer_resize(self.num_class)
         else:
-            self.class_num = dataset_class_num
-            self._fclayer_resize(self.class_num)
+            self.num_class = dataset_class_num
+            self._fclayer_resize(self.num_class)
 
         self.to(self.device)
         self.epoch, self.epochs = self.epoch if hasattr(self, "epoch") else [0, epochs]
 
+        self.loss_function = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(),
+                                           lr=self.lr,
+                                           weight_decay=self.weight_decay,
+                                          fused=torch.float16
+                                           )
+
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.epochs, eta_min=self.lr/25, last_epoch=-1)
+        self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
+
+        try:
+            self.scaler = getattr(torch, self.device_use).amp.GradScaler(enabled=self.amp)
+        except:
+            self.scaler = None
+
+        best_loss = float('inf')
         for epoch in range(self.epoch, self.epochs):
-            pass
+            self._training_step(epoch)
+            self._save_state(epoch)
+            if best_loss > self.eval_loss:
+                self._save_state(epoch, best=True)
+                step_count = 0
+            else:
+                step_count += 1
+
+            if step_count > self.early_stopping:
+                break
+
+        self._load_state()
+        self._testing_step()
 
     def valid(self):
         assert hasattr(self, "state_dict")
@@ -115,11 +146,13 @@ class model_Manager(nn.Module):
         torch.save(state_dict, self.state_PATH)
 
     def _load_state(self, state_PATH=None):
-        assert state_PATH.endswith('.pt')
+        assert state_PATH.endswith('.pt') if isinstance(state_PATH, str) else state_PATH is None
         state_PATH = self.state_PATH if state_PATH is None else state_PATH
         self.state_dict = torch.load(state_PATH)
         apply_kwargs(self, self.state_dict)
-        self._read_model()
+
+        if hasattr(self, 'model') and hasattr(self, 'ema'):
+            self._read_model()
         self._load_model()
 
     def _load_model(self):
@@ -159,8 +192,11 @@ class model_Manager(nn.Module):
     def _close_cutmix(self):
         self.Dataset.close_cutmix()
 
-    def _run_loader(self, dataloader, epoch):
-        _training = self.model.training
+    def _run_loader(self, dataloader, epoch, ):
+        epoch = torch.inf if isinstance(epoch, str) else epoch
+        _epoch = 'eval' if epoch == torch.inf else epoch
+
+        _training = self.model.training and _epoch != 'eval'
         _desc = self._train_string if _training else self._eval_string
         correct, total = 0, 0
         tol_loss = 0
@@ -169,27 +205,42 @@ class model_Manager(nn.Module):
             self.optimizer.zero_grad()
             img = img.float().to(self.device, non_blocking=dataloader.pin_memory)
             label = label.to(self.device, non_blocking=dataloader.pin_memory)
-            epoch = torch.inf if isinstance(epoch, str) else epoch
-            _epoch = 'eval' if epoch == torch.inf else epoch
 
-            with torch.autocast(device_type=self.device_use, enabled=self.AMP, dtype=torch.float16):
+            with torch.autocast(device_type=self.device_use, enabled=self.amp, dtype=torch.float16):
                 with torch.set_grad_enabled(_training):
                     module = self.ema if not _training and self.ema and epoch >= self.ema_start else self.model
                     out = module(img)
                     loss = self.loss_function(out, label)
 
             tol_loss += loss.item()
+            correct += (torch.argmax(label, 1) == torch.argmax(out, 1)).sum().item()
+            total += label.size(0)
             if _training:
                 pbar.set_description(self.table_with_fix(_desc(_epoch, tol_loss / (_idx + 1))))
-                #if self.amp and self.scaler != None:
-                #    self.scaler.scale(loss).backward()
-                #    self.scaler.step(self.optimizer)
-                #    self.scaler.update()
-                #else:
-                #loss.backward()
-                #self.optimizer.step()
+                if epoch != 'eval':
+                    if self.amp and self.scaler != None:
+                        self.scaler.scale(loss).backward()
+                        self.scaler.step(self.optimizer)
+                        self.scaler.update()
+                    else:
+                        loss.backward()
+                        self.optimizer.step()
+            else:
+                pbar.set_description(self.table_with_fix((_desc(tol_loss / (_idx + 1), correct / total))))
 
+        if _training:
+            if _epoch != 'eval':
+                if epoch >= self.ema_start:
+                    self.ema.update_parameters(module)
+                    self.swa_scheduler.step()
+                else:
+                    self.scheduler.step()
 
+            self.train_loss = tol_loss / (_idx + 1)
+        else:
+            self.eval_loss = tol_loss / (_idx + 1)
+
+        return tol_loss / (_idx + 1), correct / total
 
 
     def _training_step(self, epoch):
@@ -203,7 +254,9 @@ class model_Manager(nn.Module):
         self._run_loader(self.Dataset.val_loader, epoch)
 
     def _testing_step(self):
-        logging.warning(f'{self.table_with_fix(self.fit_training_col)}')
+        self.to(self.device)
+        torch.set_grad_enabled(False)
+        logging.warning(f'{self.table_with_fix(self.fit_eval_col)}')
         self.model.train()
         self._run_loader(self.Dataset.train_loader, 'val')
 
@@ -212,7 +265,7 @@ class model_Manager(nn.Module):
         self._run_loader(self.Dataset.test_loader, 'val')
 
     def _train_string(self, epoch, loss=np.inf):
-        return (f"{epoch}/{self.epochs}",
+        return (f"{epoch+1}/{self.epochs}",
                 f"{round(torch.cuda.memory_allocated(device = self.device)/1000000000, 2) if self.device_use == 'cuda' else 0.0}G",
                 f"{round(loss, 3) if loss != np.inf else loss}",
                 f"{self.size}"
@@ -245,10 +298,6 @@ class model_Manager(nn.Module):
 
 class DIVAN(model_Manager):
     def _read_model(self):
-        self.label_smoothing = 0.1
-        self.lr = 0.0005
-        self.weight_decay = 0
-        self.epochs = 30
         self.state_PATH = self.save_PATH + f"train/{self.model_setting.split('.')[0]}/weight/best.pt"
 
         self.yaml = self._read_yaml(self.model_setting.split('.yaml')[0])
@@ -256,24 +305,7 @@ class DIVAN(model_Manager):
         intput_channels = len(self.channels) if self.channels != 'auto' else self.channels
 
         self.model = Divanet_model(self.yaml, intput_channels)
-
         self.ema = AveragedModel(self.model)
-
-        self.to(device=self.device)
-
-        self.loss_function = nn.CrossEntropyLoss(label_smoothing=self.label_smoothing)
-        self.optimizer = torch.optim.Adam(self.model.parameters(),
-                                           lr=self.lr,
-                                           weight_decay=self.weight_decay,
-                                           )
-
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.epochs, eta_min=self.lr/25, last_epoch=-1)
-        self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
-
-        try:
-            self.scaler = getattr(torch, self.device_use).amp.GradScaler(enabled=self.amp)
-        except:
-            self.scaler = None
 
     def _read_yaml(self, yaml_path):
         with open(f'{self.cfg_PATH}{yaml_path}.yaml', 'r', encoding="utf-8") as stream:
