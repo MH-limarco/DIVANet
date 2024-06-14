@@ -6,11 +6,11 @@ if __name__ == '__main__':
                         format=FORMAT)
 
     model = DIVAN('resnet34.yaml')
-    model.fit('dataset', 50,
+    model.fit('dataset', 100,
               batch_size=128,
-              cutmix_p=1,
+              cutmix_p=0,
               label_smoothing=0,
-              last_cutmix_close=10,
-              lr=0.001,
-              EMA=True,
-              RAM=True)
+              last_cutmix_close=25,
+              lr=0.0003,
+              EMA=False,
+              RAM=False)

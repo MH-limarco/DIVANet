@@ -27,9 +27,14 @@ divanet:
                      "Train_loss",    #Train loss
                      "Size"           #image Size
                     ]
+  test_training_col: [ " ",
+                       " ",
+                       "Train_loss",  #Train loss
+                       "Train_acc",   #Train acc
+                       ]
 
   fit_eval_col: [" ",
-                 " ",
+                 "Use_EMA",
                  "Eval_loss",         #Eval loss
                  "Eval_acc",          #Eval acc
                 ]

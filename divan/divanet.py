@@ -48,6 +48,7 @@ class model_Manager(nn.Module):
         self.model = self.model.to(self.device)
         self.ema = self.ema.to(self.device)
 
+
     def forward(self, x):
         pass
         with torch.autocast(device_type=self.device):
@@ -61,7 +62,7 @@ class model_Manager(nn.Module):
             lr=1e-3,
             early_stopping=15,
             label_smoothing=0.1,
-            weight_decay=0,
+            weight_decay=0.01,
             pin_memory=False,
             shuffle=True,
             silence=False,
@@ -77,7 +78,7 @@ class model_Manager(nn.Module):
             ):
         apply_args(self)
         self._build_dataset()
-        self.ema_start = 0 if EMA is True else -1 if not EMA else EMA
+        self.ema_start = 0 if EMA is True else float('inf') if not EMA else EMA
         dataset_class_num = self.Dataset.class_num
         if hasattr(self, 'class_num'):
             if dataset_class_num != self.class_num:
@@ -97,7 +98,7 @@ class model_Manager(nn.Module):
                                           fused=torch.float16
                                            )
 
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=self.epochs, eta_min=self.lr/25, last_epoch=-1)
+        self.scheduler = self.warn_up_scheduler()
         self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
 
         try:
@@ -105,6 +106,7 @@ class model_Manager(nn.Module):
         except:
             self.scaler = None
 
+        step_count = 0
         best_loss = float('inf')
         for epoch in range(self.epoch, self.epochs - last_cutmix_close):
             self._training_step(epoch)
@@ -118,12 +120,20 @@ class model_Manager(nn.Module):
             if step_count > self.early_stopping:
                 break
 
+        step_count = 0
         self.Dataset.close_cutmix()
-        for _epoch in range(self.last_cutmix_close):
-            self._training_step(_epoch+epoch+1)
-            self._save_state(_epoch+epoch+1)
+        self.loss_function = nn.CrossEntropyLoss(label_smoothing=0)
+        for _epoch in range(1, self.last_cutmix_close + 1):
+            self._training_step(_epoch + epoch)
+            self._save_state(_epoch + epoch)
             if best_loss > self.eval_loss:
-                self._save_state(_epoch+epoch, best=True)
+                self._save_state(_epoch + epoch, best=True)
+                step_count = 0
+            else:
+                step_count += 1
+
+            if step_count > self.early_stopping:
+                break
 
         self._load_state()
         self._testing_step()
@@ -177,6 +187,10 @@ class model_Manager(nn.Module):
         device, cuda_idx = device if len(device) > 1 else [device[0], None]
         device = device if torch.cuda.is_available() and device != 'cpu' else 'cpu'
         cuda_idx = f':{cuda_idx}' if cuda_idx is not None and device != 'cpu' else cuda_idx
+        if device == 'cuda':
+            torch.backends.cudnn.benchmark = True
+        else:
+            torch.backends.cudnn.benchmark = False
         return chose_cuda(device) if cuda_idx is None else f'{device}{cuda_idx}', device
 
     def _build_dataset(self):
@@ -203,24 +217,25 @@ class model_Manager(nn.Module):
 
     def _run_loader(self, dataloader, epoch, ):
         epoch = torch.inf if isinstance(epoch, str) else epoch
-        _epoch = 'eval' if epoch == torch.inf else epoch
+        ema_used = self.ema_used if hasattr(self, "ema_used") else epoch >= self.ema_start
 
+        _epoch = 'eval' if epoch == torch.inf else epoch
         _training = self.model.training and _epoch != 'eval'
         _desc = self._train_string if _training else self._eval_string
         correct, total = 0, 0
         tol_loss = 0
+
+        module = self.ema if not _training and ema_used else self.model
         pbar = tqdm(dataloader, desc=self.table_with_fix(_desc(epoch)), ncols=110)
         for _idx, (img, label) in enumerate(pbar):
-            self.optimizer.zero_grad()
+
             img = img.float().to(self.device, non_blocking=dataloader.pin_memory)
             label = label.to(self.device, non_blocking=dataloader.pin_memory)
-            ema_used = self.ema_used if hasattr(self, "ema_used") else epoch >= self.ema_start
+            self.optimizer.zero_grad()
             with torch.autocast(device_type=self.device_use, enabled=self.amp, dtype=torch.float16):
                 with torch.set_grad_enabled(_training):
-                    module = self.ema if not _training and ema_used else self.model
                     out = module(img)
                     loss = self.loss_function(out, label)
-
             tol_loss += loss.item()
             correct += (torch.argmax(label, 1) == torch.argmax(out, 1)).sum().item()
             total += label.size(0)
@@ -235,11 +250,11 @@ class model_Manager(nn.Module):
                         loss.backward()
                         self.optimizer.step()
             else:
-                pbar.set_description(self.table_with_fix((_desc(tol_loss / (_idx + 1), correct / total))))
+                pbar.set_description(self.table_with_fix((_desc(ema_used, tol_loss / (_idx + 1), correct / total))))
 
         if _training:
             if _epoch != 'eval':
-                if epoch >= self.ema_start:
+                if ema_used:
                     self.ema.update_parameters(module)
                     self.swa_scheduler.step()
                 else:
@@ -250,7 +265,6 @@ class model_Manager(nn.Module):
             self.eval_loss = tol_loss / (_idx + 1)
 
         return tol_loss / (_idx + 1), correct / total
-
 
     def _training_step(self, epoch):
         torch.set_grad_enabled(True)
@@ -265,7 +279,7 @@ class model_Manager(nn.Module):
     def _testing_step(self):
         self.to(self.device)
         torch.set_grad_enabled(False)
-        logging.warning(f'{self.table_with_fix(self.fit_eval_col)}')
+        logging.warning(f'{self.table_with_fix(self.test_training_col)}')
         self.model.train()
         self._run_loader(self.Dataset.train_loader, 'val')
 
@@ -280,9 +294,9 @@ class model_Manager(nn.Module):
                 f"{self.size}"
                 )
 
-    def _eval_string(self, loss=np.inf, acc=0):
+    def _eval_string(self, ema_used,loss=np.inf, acc=0):
         return (f" ",
-                f" ",
+                f"{ema_used}",
                 f"{round(loss, 3) if loss != np.inf else loss}",
                 f"{round(acc, 3)}")
 
@@ -291,6 +305,19 @@ class model_Manager(nn.Module):
         for data in tqdm(loader, desc=f"|{self.block_name} - speed test|"):
             _ = data
         logging.debug(f"{self.block_name}: loader loop time: {round(time.monotonic()-start, 2)}s")
+
+    def warn_up_scheduler(self):
+        scheduler_warn_up = torch.optim.lr_scheduler.LinearLR(self.optimizer,
+                                                              start_factor=0.1,
+                                                              total_iters=round(self.epochs/15))
+
+        scheduler_start = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer,
+                                                                               T_0=round(self.epochs/15),
+                                                                               T_mult=2,
+                                                                               eta_min=self.lr/25,
+                                                                               last_epoch=-1)
+
+        return torch.optim.lr_scheduler.ChainedScheduler([scheduler_warn_up, scheduler_start])
 
     @staticmethod
     def table_with_fix(col, fix_len=13):
