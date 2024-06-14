@@ -99,28 +99,31 @@ class model_Manager(nn.Module):
                                            )
 
         self.scheduler = self.warn_up_scheduler()
-        self.swa_scheduler = SWALR(self.optimizer, swa_lr=self.lr*1.5, anneal_strategy="cos")
+        self.swa_scheduler = SWALR(self.optimizer,
+                                   anneal_epochs=round(self.epochs/2.5),
+                                   swa_lr=self.lr/10,
+                                   anneal_strategy="cos")
 
         try:
             self.scaler = getattr(torch, self.device_use).amp.GradScaler(enabled=self.amp)
         except:
             self.scaler = None
 
-        step_count = 0
+        self.step_count = 0
         best_loss = float('inf')
         for epoch in range(self.epoch, self.epochs - last_cutmix_close):
             self._training_step(epoch)
             self._save_state(epoch)
             if best_loss > self.eval_loss:
                 self._save_state(epoch, best=True)
-                step_count = 0
+                self.step_count = 0
             else:
-                step_count += 1
+                self.step_count += 1
 
-            if step_count > self.early_stopping:
+            if self.step_count > self.early_stopping:
                 break
 
-        step_count = 0
+        self.step_count = 0 if self.label_smoothing > 0 or self.cutmix_p > 0 else self.step_count
         self.Dataset.close_cutmix()
         self.loss_function = nn.CrossEntropyLoss(label_smoothing=0)
         for _epoch in range(1, self.last_cutmix_close + 1):
@@ -128,13 +131,14 @@ class model_Manager(nn.Module):
             self._save_state(_epoch + epoch)
             if best_loss > self.eval_loss:
                 self._save_state(_epoch + epoch, best=True)
-                step_count = 0
+                self.step_count = 0
             else:
-                step_count += 1
+                self.step_count += 1
 
-            if step_count > self.early_stopping:
+            if self.step_count > self.early_stopping:
                 break
 
+        self.step_count = 0
         self._load_state()
         self._testing_step()
 
@@ -342,6 +346,7 @@ class DIVAN(model_Manager):
 
         self.model = Divanet_model(self.yaml, intput_channels)
         self.ema = AveragedModel(self.model)
+        self.ema.eval()
 
     def _read_yaml(self, yaml_path):
         with open(f'{self.cfg_PATH}{yaml_path}.yaml', 'r', encoding="utf-8") as stream:

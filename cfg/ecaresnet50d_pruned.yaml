@@ -11,4 +11,4 @@ scales:
 
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, timm_model, ['ecaresnet50d_pruned']] # 0-P1/2
+  - [-1, 1, timm_backbone, ['ecaresnet50d_pruned']] # 0-P1/2

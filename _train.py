@@ -12,5 +12,5 @@ if __name__ == '__main__':
               label_smoothing=0,
               last_cutmix_close=25,
               lr=0.0003,
-              EMA=False,
-              RAM=False)
+              EMA=True,
+              RAM=True)
