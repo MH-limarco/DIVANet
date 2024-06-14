@@ -22,7 +22,7 @@ class Divanet_model(nn.Module):
     def forward(self, x):
         out = {-1: x}
         for module in self.sequential:
-            save_i = [-1] + [i for i in module.f if i in self.save_idx]
+            save_i = [-1] + [i for i in [module.i] if i in self.save_idx]
             _input = [out[k] for k in module.f] if len(module.f) > 1 else out[module.f[0]]
             _output = module(_input)
             out.update(out.fromkeys(save_i, _output))
@@ -91,7 +91,8 @@ class Divanet_model(nn.Module):
                     with contextlib.suppress(ValueError):
                         args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
 
-            if m not in [nn.BatchNorm2d, Concat,
+            if m not in [nn.BatchNorm2d, nn.Identity,
+                         Concat,
                          vision_backbone, timm_backbone,
                          ChannelAttention, SpatialAttention, CBAM
                          ]:
@@ -114,7 +115,7 @@ class Divanet_model(nn.Module):
                 c2 = ch[f]
                 args = [c1, *args]
 
-            elif m is nn.BatchNorm2d:
+            elif m in [nn.BatchNorm2d, nn.Identity]:
                 args = [ch[f]]
 
             elif m is Concat:

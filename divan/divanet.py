@@ -127,14 +127,15 @@ class model_Manager(nn.Module):
         self.early_stopping = round(self.early_stopping / 2)
         self.ema_start = epoch if self.ema_start != float('inf') else float('inf')
 
-        self.Dataset.close_cutmix()
         self._load_state()
-        self.loss_function = nn.CrossEntropyLoss(label_smoothing=0)
-        for _epoch in range(self.epoch, self.last_cutmix_close + 1 + self.epoch):
-            self._training_step(_epoch + epoch)
-            self._save_state(_epoch + epoch)
+        self.ema_used = True if EMA is True else self.ema_used
+        self.Dataset.close_cutmix()
+        #self.loss_function = nn.CrossEntropyLoss(label_smoothing=0)
+        for _epoch in range(epoch + 1, self.last_cutmix_close + epoch + 1 ):
+            self._training_step(_epoch)
+            self._save_state(_epoch)
             if best_loss > self.eval_loss:
-                self._save_state(_epoch + epoch, best=True)
+                self._save_state(_epoch, best=True)
                 self.step_count = 0
             else:
                 self.step_count += 1
@@ -288,7 +289,7 @@ class model_Manager(nn.Module):
     def _testing_step(self):
         self.to(self.device)
         torch.set_grad_enabled(False)
-        logging.warning(f'{self.table_with_fix(self.test_training_col)}')
+        logging.warning(f'\n{self.table_with_fix(self.test_training_col)}')
         self.model.train()
         self._run_loader(self.Dataset.train_loader, 'val')
 

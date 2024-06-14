@@ -5,13 +5,13 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG,
                         format=FORMAT)
 
-    model = DIVAN('resnet34.yaml')
+    model = DIVAN('M_c.yaml')
     model.fit('dataset', 100,
               batch_size=128,
               cutmix_p=1,
-              label_smoothing=0,
+              label_smoothing=0. ,
               last_cutmix_close=25,
-              lr=0.0003,
+              lr=0.0005,
               early_stopping=15,
-              EMA=True,
+              EMA=False,
               RAM=False)

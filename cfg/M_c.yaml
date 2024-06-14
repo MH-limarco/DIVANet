@@ -1,0 +1,27 @@
+# Parameters
+nc: 1000 # number of classes
+activation: Mish
+scales:
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 1024]
+  l: [1.00, 1.00, 1024]
+  x: [1.00, 1.25, 1024]
+
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, nn.Identity, []]
+  - [-1, 1, Conv, [64, 3, 2]] # 1-P1/2     #1
+  - [-1, 1, Conv, [128, 3, 2]]   # 2       #2
+  - [-1, 1, Conv, [256, 3, 2]]   # 3       #3
+  - [-1, 1, Conv, [512, 3, 2]]   # 4       #4
+
+  - [0, 1, Conv, [64, 3, 2]]     # 5       #2
+  - [-1, 1, Conv, [128, 3, 2]]   # 6       #2
+  - [-1, 1, Conv, [256, 3, 2]]   # 7      #3
+  - [-1, 1, Conv, [512, 3, 2]]   # 8      #4
+  - [[4, 8], 1, Concat,[]]
+
+head:
+  - [-1, 1, Classify, [nc]] # Classify    #5
