@@ -188,7 +188,7 @@ class Dataset_Manager:
     def _build_loader(self):
         for idx, (_dataset, name) in enumerate(zip(self.Data_list, self.data_name)):
             collate_fn = self._collate_eval if (idx > 0 or self.cutmix_p<=0) else self._collate_train
-            batch_power = 1 if idx <= 0 else 1.5
+            batch_power = 1 if idx <= 0 else 4
             num_workers = min(0 if self.RAM else self.num_workers, 10)
             loader = DataLoader(_dataset,
                                 batch_size=int(self.batch_size * batch_power),

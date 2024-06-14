@@ -5,7 +5,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, TensorDataset, DistributedSampler
-from torch.optim.swa_utils import AveragedModel, SWALR
+from torch.optim.swa_utils import AveragedModel, SWALR, get_ema_multi_avg_fn, update_bn
 
 from psutil import cpu_count
 from tqdm.auto import tqdm
@@ -78,7 +78,7 @@ class model_Manager(nn.Module):
             ):
         apply_args(self)
         self._build_dataset()
-        self.ema_start = 0 if EMA is True else float('inf') if not EMA else EMA
+        self.ema_start = round(self.epochs*0.7) if EMA is True else float('inf') if not EMA else EMA
         dataset_class_num = self.Dataset.class_num
         if hasattr(self, 'class_num'):
             if dataset_class_num != self.class_num:
@@ -123,10 +123,14 @@ class model_Manager(nn.Module):
             if self.step_count > self.early_stopping:
                 break
 
-        self.step_count = 0 if self.label_smoothing > 0 or self.cutmix_p > 0 else self.step_count
+        self.step_count = 0
+        self.early_stopping = round(self.early_stopping / 2)
+        self.ema_start = epoch if self.ema_start != float('inf') else float('inf')
+
         self.Dataset.close_cutmix()
+        self._load_state()
         self.loss_function = nn.CrossEntropyLoss(label_smoothing=0)
-        for _epoch in range(1, self.last_cutmix_close + 1):
+        for _epoch in range(self.epoch, self.last_cutmix_close + 1 + self.epoch):
             self._training_step(_epoch + epoch)
             self._save_state(_epoch + epoch)
             if best_loss > self.eval_loss:
@@ -174,7 +178,7 @@ class model_Manager(nn.Module):
         self.state_dict = torch.load(state_PATH)
         apply_kwargs(self, self.state_dict)
 
-        if hasattr(self, 'model') and hasattr(self, 'ema'):
+        if not hasattr(self, 'model'):
             self._read_model()
         self._load_model()
 
@@ -219,7 +223,7 @@ class model_Manager(nn.Module):
     def _close_cutmix(self):
         self.Dataset.close_cutmix()
 
-    def _run_loader(self, dataloader, epoch, ):
+    def _run_loader(self, dataloader, epoch):
         epoch = torch.inf if isinstance(epoch, str) else epoch
         ema_used = self.ema_used if hasattr(self, "ema_used") else epoch >= self.ema_start
 
@@ -253,13 +257,14 @@ class model_Manager(nn.Module):
                     else:
                         loss.backward()
                         self.optimizer.step()
+
             else:
                 pbar.set_description(self.table_with_fix((_desc(ema_used, tol_loss / (_idx + 1), correct / total))))
 
         if _training:
             if _epoch != 'eval':
                 if ema_used:
-                    self.ema.update_parameters(module)
+                    self.ema.update_parameters(self.model)
                     self.swa_scheduler.step()
                 else:
                     self.scheduler.step()
@@ -344,8 +349,9 @@ class DIVAN(model_Manager):
         self.yaml["nc"] = self.num_class if hasattr(self, "num_class") else self.yaml["nc"]
         intput_channels = len(self.channels) if self.channels != 'auto' else self.channels
 
+        decay = 0.9995
         self.model = Divanet_model(self.yaml, intput_channels)
-        self.ema = AveragedModel(self.model)
+        self.ema = AveragedModel(self.model, multi_avg_fn=get_ema_multi_avg_fn(decay))
         self.ema.eval()
 
     def _read_yaml(self, yaml_path):
