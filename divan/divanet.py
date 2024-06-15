@@ -115,6 +115,7 @@ class model_Manager(nn.Module):
             self._training_step(epoch)
             self._save_state(epoch)
             if best_loss > self.eval_loss:
+                self.best_epoch = epoch
                 self._save_state(epoch, best=True)
                 self.step_count = 0
             else:
@@ -135,6 +136,7 @@ class model_Manager(nn.Module):
             self._training_step(_epoch)
             self._save_state(_epoch)
             if best_loss > self.eval_loss:
+                self.best_epoch = _epoch
                 self._save_state(_epoch, best=True)
                 self.step_count = 0
             else:
@@ -143,6 +145,7 @@ class model_Manager(nn.Module):
             if self.step_count > self.early_stopping:
                 break
 
+        logging.info(f"{self.block_name}: Train finish - best epoch {self.best_epoch}")
         self.step_count = 0
         self._load_state()
         self._testing_step()
