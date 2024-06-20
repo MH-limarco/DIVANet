@@ -352,16 +352,17 @@ class model_Manager(nn.Module):
 
     def draw_plot(self):
         df = pd.DataFrame(self.datafram_ls, columns=['epoch', 'train_loss', 'train_acc', 'eval_loss', 'eval_acc', 'lr']).set_index('epoch')
+        PATH = self.train_PATH.replace('weight','')
         train_df, test_df = df.iloc[:-1], df.iloc[-1]
-        fig = plt.figure()
-        ax_loss = train_df[['train_loss', 'eval_loss']].plot()
-        fig.savefig(self.train_PATH + "loss.png")
-        ax_acc = train_df[['train_acc', 'eval_acc']].plot()
-        fig.savefig(self.train_PATH + "acc.png")
-        ax_lr = train_df["lr"].plot()
-        fig.savefig(self.train_PATH + "ls.png")
-        df.to_csv(self.train_PATH+"result.csv")
 
+        ax_loss = train_df[['train_loss', 'eval_loss']].plot()
+        ax_acc = train_df[['train_acc', 'eval_acc']].plot()
+        ax_lr = train_df[["lr"]].plot()
+
+        ax_loss.get_figure().savefig(PATH + "loss.png")
+        ax_acc.get_figure().savefig(PATH + "acc.png")
+        ax_lr.get_figure().savefig(PATH + "lr.png")
+        df.to_csv(PATH+"result.csv")
 
     def check_dirs(self, PATH, weight=False):
         if not os.path.exists(PATH):

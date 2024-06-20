@@ -11,7 +11,7 @@ if __name__ == '__main__':
               cutmix_p=0,
               label_smoothing=0.,
               last_cutmix_close=0,
-              lr=0.0025, #lr=0.0005,
+              lr=0.0025, #lr=0.0005, #0.0025
               early_stopping=15,
               EMA=False,
               RAM=False)

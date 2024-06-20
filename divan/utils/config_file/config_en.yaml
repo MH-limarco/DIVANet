@@ -4,7 +4,7 @@ base:
 
   cfg_PATH: "cfg/"
 
-  save_PATH: "run/"
+  save_PATH: "divan_runs/"
 
   data_name: ['train', 'val', 'test']
 
