@@ -21,7 +21,7 @@ class randomChoice(RandomChoice):
         long_input = True if len(inputs) >= 3 else False
         idx = int(torch.multinomial(torch.tensor(self.p), 1))
         img, label = self.transforms[idx](*inputs[:2])
-
+        img = img.float()/255.0 if img.dtype == torch.uint8 else img
         if long_input:
             return img, label, inputs[2]
         else:
@@ -34,7 +34,7 @@ class identity(nn.Module):
     def forward(self, *inputs):
         long_input = True if len(inputs) >= 3 else False
         img, label = self.transform(*inputs[:2])
-
+        img = img.float()/255.0 if img.dtype == torch.uint8 else img # / 255.0
         if long_input:
             return img, label, inputs[2]
         else:

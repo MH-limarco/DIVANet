@@ -154,7 +154,6 @@ class MoEKANConvBase(nn.Module):
 
         for i in range(1, num_experts):
             self.experts[i].load_state_dict(self.experts[0].state_dict())
-
         assert (self.k <= self.num_experts)
 
     def cv_squared(self, x):

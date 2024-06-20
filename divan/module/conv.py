@@ -3,7 +3,6 @@ import torch
 
 from divan.module.utils import *
 from divan.module.kan_convs import *
-
 try:
     from DCNv4.modules.dcnv4 import DCNv4 as dcnv4
 except ImportError as e:
@@ -118,7 +117,6 @@ class Concat(nn.Module):
         return torch.cat(x, self.d)
 
 if __name__ == "__main__":
-
     model = dcnv4(4, 16, 3).cuda()
     input_rgb = torch.randn(4, 4, 224, 224).cuda()
 

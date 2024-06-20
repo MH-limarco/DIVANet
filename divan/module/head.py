@@ -22,5 +22,7 @@ class Classify(nn.Module):
         """Performs a forward pass of the inference model on input image data."""
         if isinstance(x, list):
             x = torch.cat(x, 1)
+        elif isinstance(x, tuple):
+            x = x[0]
         x = self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
         return x if self.training else x.softmax(1)

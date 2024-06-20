@@ -28,13 +28,13 @@ divanet:
                      "Size"           #image Size
                     ]
   test_training_col: [ "Val",
-                       "Use_EMA",
+                       "Use_SWA",
                        "Train_loss",  #Train loss
                        "Train_acc",   #Train acc
                        ]
 
   fit_eval_col: [" ",
-                 "Use_EMA",
+                 "Use_SWA",
                  "Eval_loss",         #Eval loss
                  "Eval_acc",          #Eval acc
                 ]
@@ -60,7 +60,7 @@ backbone:
 cuda_ready:
   block_name: "CUDA_Manager"          #CUDA Manager
 
-  memory_utilization_command: nvidia-smi --query-gpu=utilization.memory --format=csv
+  memory_utilization_command: nvidia-smi --query-gpu=memory.free --format=csv
 
 ## utils/dataset.py ##
 dataset:

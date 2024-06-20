@@ -43,10 +43,6 @@ class Divanet_model(nn.Module):
 
         if act:
             Conv.default_act = Activations(act)(inplace=True)
-            #print(f"{('activation:')} {Conv.default_act}")  # print
-
-        #if verbose:
-            #LOGGER.info(f"\n{'':>3}{'from':>20}{'n':>3}{'params':>10}  {'module':<45}{'arguments':<30}")
 
         ch = [_input_channels]
         layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
@@ -64,8 +60,10 @@ class Divanet_model(nn.Module):
         full_dict = _dict["backbone"]
         if _dict.get("head"):
             full_dict += _dict["head"]
+
         else:
-            print('no head')
+            pass
+            #print('no head')
 
         for i, (f, n, m, args) in enumerate(full_dict):  # from, number, module, args
             assert max([f] if isinstance(f, int) else f) < i
@@ -112,8 +110,8 @@ class Divanet_model(nn.Module):
                     n = 1
 
             elif m in [ChannelAttention, SpatialAttention, CBAM]:
+                args = [ch[f], *args]
                 c2 = ch[f]
-                args = [c1, *args]
 
             elif m in [nn.BatchNorm2d, nn.Identity]:
                 args = [ch[f]]

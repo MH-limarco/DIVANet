@@ -39,7 +39,6 @@ class ChannelAttention(nn.Module):
                 [ff_layer(in_channels, reduced_channels, **cnn_args),
                  ff_act(),
                  ff_layer(reduced_channels, in_channels,  **cnn_args)])
-
         self.mlp = nn.Sequential(*_Sequential)
 
     def forward(self, x):
@@ -69,7 +68,10 @@ class SpatialAttention(nn.Module):
         padding = max((kernel_size - 1) // 2, 1)
 
         self.pool = ChannelPool()
-        self.spatial = Conv(in_channels, out_channels, kernel_size, s=1, p=padding, act=activation)
+        self.spatial = Conv(in_channels, out_channels, kernel_size,
+                            stride=1,
+                            padding=padding,
+                            activation=activation)
 
     def forward(self, x):
         x_pool = self.pool(x)
@@ -117,9 +119,9 @@ class QKV(nn.Module):
         self.scale = self.key_dim ** -0.5
         nh_kd = nh_kd = self.key_dim * num_heads
         h = dim + nh_kd * 2
-        self.qkv = Conv(dim, h, 1, act=False)
-        self.proj = Conv(dim, dim, 1, act=False)
-        self.pe = Conv(dim, dim, 3, 1, g=dim, act=False)
+        self.qkv = Conv(dim, h, 1, activation=False)
+        self.proj = Conv(dim, dim, 1, activation=False)
+        self.pe = Conv(dim, dim, 3, 1, groups=dim, activation=False)
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -144,11 +146,10 @@ class PSA(nn.Module):
         self.c = int(c1 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv(2 * self.c, c1, 1)
-
         self.attn = QKV(self.c, attn_ratio=0.5, num_heads=self.c // 64)
         self.ffn = nn.Sequential(
             Conv(self.c, self.c * 2, 1),
-            Conv(self.c * 2, self.c, 1, act=False)
+            Conv(self.c * 2, self.c, 1, activation=False)
         )
 
     def forward(self, x):

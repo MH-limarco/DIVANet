@@ -71,7 +71,7 @@ def inlayer_resize(model, in_channels=3):
 def fclayer_resize(model, num_class=1000):
     for name, layer in reversed(list(model.named_modules())):
         if isinstance(layer, nn.Linear):
-            new_layer = nn.Linear(layer.in_features, out_features=num_class, bias=False if layer is None else True)
+            new_layer = nn.Linear(layer.in_features, out_features=num_class, bias=False if layer is None else True) #
 
             name_parts = name.split('.')
             sub_module = model

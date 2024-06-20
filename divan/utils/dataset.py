@@ -188,7 +188,7 @@ class Dataset_Manager:
     def _build_loader(self):
         for idx, (_dataset, name) in enumerate(zip(self.Data_list, self.data_name)):
             collate_fn = self._collate_eval if (idx > 0 or self.cutmix_p<=0) else self._collate_train
-            batch_power = 1 if idx <= 0 else 4
+            batch_power = 1 if idx <= 0 else 1
             num_workers = min(0 if self.RAM else self.num_workers, 10)
             loader = DataLoader(_dataset,
                                 batch_size=int(self.batch_size * batch_power),
@@ -202,10 +202,10 @@ class Dataset_Manager:
     def _setup_cutmix(self):
         p = [self.cutmix_p, 1-self.cutmix_p]
         if self.cutmix_p > 0:
-            self.out_train = v2.RandomChoice([self.cutmix, self.one_hot], p=p)
+            self.out_train = randomChoice([self.cutmix, self.one_hot], p=p)
         else:
-            self.out_train = self.one_hot
-        self.out_eval = self.one_hot
+            self.out_train = identity(self.one_hot)
+        self.out_eval = identity(self.one_hot)
 
     def _collate_train(self, batch):
         return self.out_train(*default_collate(batch))
