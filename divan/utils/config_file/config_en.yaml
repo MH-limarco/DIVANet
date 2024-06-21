@@ -4,7 +4,7 @@ base:
 
   cfg_PATH: "cfg/"
 
-  save_PATH: "divan_runs/"
+  save_PATH: "divan_result/"
 
   data_name: ['train', 'val', 'test']
 
@@ -28,13 +28,13 @@ divanet:
                      "Size"           #image Size
                     ]
   test_training_col: [ "Val",
-                       "Use_SWA",
+                       "end_step",
                        "Train_loss",  #Train loss
                        "Train_acc",   #Train acc
                        ]
 
   fit_eval_col: [" ",
-                 "Use_SWA",
+                 "end_step",
                  "Eval_loss",         #Eval loss
                  "Eval_acc",          #Eval acc
                 ]

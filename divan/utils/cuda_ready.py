@@ -12,7 +12,7 @@ def chose_cuda(device):
         cuda_ram = subprocess.run(cuda_config['memory_utilization_command'].split(' '),encoding='utf-8',
                              stdout=subprocess.PIPE, stdin=subprocess.PIPE).stdout.replace('%', '').replace("MiB", "")
         cuda_ram = [int(i) for i in cuda_ram.split('\n')[1:] if len(i) > 0]
-        device = f'{device}:{min(range(len(cuda_ram)), key=cuda_ram.__getitem__)}'
+        device = f'{device}:{max(range(len(cuda_ram)), key=cuda_ram.__getitem__)}'
         logging.debug(f"{cuda_config['block_name']}: Auto choose - {device}")
         return device
 
