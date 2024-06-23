@@ -95,11 +95,11 @@ if __name__ == '__main__':
 
 <details open>
 
->### [DIVAN](divan/readme.md)
+>### [DIVAN](divan/)
 >
->### [Configuration](cfg/readme.md)
+>### [Configuration](cfg/)
 >
->### [Setting](divan/utils/config_file/readme.md)
+>### [Setting](divan/utils/config_file/)
 
 </details>
 
