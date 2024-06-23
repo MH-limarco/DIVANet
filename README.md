@@ -1,16 +1,16 @@
-# DIVANet: Dynamic Interactive Visual Architecture Network
+# 👻DIVANet: Dynamic Interactive Visual Architecture Network
 
->## **Introduction**
+>## 🎯**Introduction**
 > This project is an extension of the Institute of 1122 - NCKU Data Science's Deep Learning HW2 requirement. It aims to introduce an open framework to the standard training process, enhancing its scalability and usability. Users can easily integrate updated models or modules into the framework and combine them seamlessly.
 > 
 >Additionally, a straightforward automatic equipment allocation feature has been incorporated to maximize the computational performance of the computing center.
 >
->## Contents:
->#### [Documentation](#documentation)
+>## 📑Contents:
+>- #### [Documentation](#documentation)
 > 
->#### [Getting started](#getting-started-1)
+>- #### [Getting started](#getting-started-1)
 > 
->#### [API Introductione](#API-Introduction)
+>- #### [API Introductione](#API-Introduction)
 
 
 ## <div align="center">📔Documentation📔</div>
@@ -18,12 +18,12 @@
 #### See below for a quickstart and usage example
 
 <details open>
-<summary>Preliminaries</summary>
+<summary>🙈Preliminaries</summary>
 
-### Environment
+### 🚩Environment
 >This project is based on a [**Python>=3.11**](https://www.python.org/) and [CUDA Toolkit>=11.8](https://developer.nvidia.com/cuda-toolkit) environment with Windows 11 & Ubuntu 20.04.
 
-### Package install
+### 💻Package install
 ```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 pip install tqdm
@@ -38,13 +38,13 @@ pip install timm
 cd extra_modules/DCNv4_op
 python setup.py build install
 ```
->For alternative installation methods including [Conda](https://anaconda.org/conda-forge/pandas).
+>⚠️ For alternative installation methods including [Conda](https://anaconda.org/conda-forge/pandas).
 </details>
 
 ## <div align="center">👐Getting started👐</div>
 
 <details open>
-<summary>Usage</summary>
+<summary>🏃Usage</summary>
 
 ### Python - Training
 ```python
@@ -85,7 +85,7 @@ if __name__ == '__main__':
               early_stopping=48,
               RAM=True)
 ```
->#### After the training is completed, the training process information and parameters will be recorded in:
+>#### ⚠️After the training is completed, the training process information and parameters will be recorded in:
 >divan_result/train/{yaml_name}-{id} (e.g: divan_result/train/resnet34-1)
 
 </details>
@@ -94,7 +94,7 @@ if __name__ == '__main__':
 ## <div align="center">📋API Introduction📋</div>
 
 <details open>
-<summary>Menu</summary>
+<summary>📑Menu</summary>
 
 + #### [DIVAN](divan)
 
@@ -104,23 +104,22 @@ if __name__ == '__main__':
 
 </details>
 
-## Concat
-> #### nn6125010@gs.ncku.edu.tw
+## 📧Concat
+> #### email: nn6125010@gs.ncku.edu.tw
 
-## Acknowledgement
-
+## 💡Acknowledgement
 >DIVANet is built with reference to the code of the following projects
 >* #### [Ultralytics](https://github.com/ultralytics/ultralytics?tab=readme-ov-file)
 >* #### [DCNv4](https://github.com/OpenGVLab/DCNv4)
 >* #### [torch-conv-kan](https://github.com/IvanDrokin/torch-conv-kan)
 >Thanks for their awesome work!
 
-## TODO
-* [x] **Continuing training**  
-* [ ] **wandb support**  
-* [ ] **Unified log management**  
-* [ ] **Distributed Data Parallel**  
-* [ ] **Separate testing function**  
+## 📃TODO
+✅ **Continuing training**  
+📝 **wandb support**  
+📝 **Unified log management**  
+📝 **Distributed Data Parallel**  
+📝 **Separate testing function**  
 
 ---
 This is presented as my second practical exercise, and feedback or issues are welcome on GitHub.
