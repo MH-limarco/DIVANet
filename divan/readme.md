@@ -28,15 +28,16 @@ if __name__ == '__main__':
 ---
 ## DIVAN Settings
 
-|                | Default | instruction                                                                                                                                |
-|:---------------|:--------|:-------------------------------------------------------------------------------------------------------------------------------------------|
-| model_setting  |         | Read YAML or pt, construct the framework used and initialize variables                                                                     |
-| channels       | "RGB"   | Sets model input channels - support: "RGB","RG","R","G","B"...                                                                             |
-| fix_mean       | False   | Enable averaging of clipping channels                                                                                                      |
-| cut_channels   | False   | Enable Hard Clip Channel                                                                                                                   |
-| amp            | True    | Enables Automatic Mixed Precision (AMP) training, reducing memory usage and possibly speeding up training with minimal impact on accuracy. |
-| device         | "cuda"  | Specifies the computational device for training: auto-chose GPU(device='cuda'), a single GPU(device='cuda:0'),CPU(device='cpu).            |
-| seed           | 0       | Sets the random seed for training, ensuring reproducibility of results across runs with the same configurations.                           |
+|               | Default | instruction                                                                                                                                |
+|:--------------|:--------|:-------------------------------------------------------------------------------------------------------------------------------------------|
+| model_setting |         | Read YAML or pt, construct the framework used and initialize variables                                                                     |
+| channels      | "RGB"   | Sets model input channels - support: RGB","RG","R","G","B","auto"...                                                                       |
+| random_p      | 0.8     | Sets channel enable probability, only applies when channels == "auto"                                                                      |
+| fix_mean      | False   | Enable averaging of clipping channels                                                                                                      |
+| cut_channels  | False   | Enable Hard Clip Channel                                                                                                                   |
+| amp           | True    | Enables Automatic Mixed Precision (AMP) training, reducing memory usage and possibly speeding up training with minimal impact on accuracy. |
+| device        | "cuda"  | Specifies the computational device for training: auto-chose GPU(device='cuda'), a single GPU(device='cuda:0'),CPU(device='cpu).            |
+| seed          | 0       | Sets the random seed for training, ensuring reproducibility of results across runs with the same configurations.                           |
 ---
 ## Fit Settings
 

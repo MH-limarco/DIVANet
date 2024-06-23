@@ -54,7 +54,7 @@ class DIVANetDataset(Dataset):
         self._build_channels_adj()
 
     def _build_channels_adj(self):
-        if self.channels != None:
+        if self.channels != 'auto':
             self.channels_adj = torch.Tensor(sorted([self.RGB_index.index(c) + 1 for c in self.channels]))
         else:
             self.channels_adj = self.randint((self.__len__(), self.max_channels), self.random_p)
