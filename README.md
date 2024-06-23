@@ -1,11 +1,9 @@
 # DIVANet: Dynamic Interactive Visual Architecture Network
 
 >## **Introduction**
-> This project is based on the Institute of Data Science 1122 Deep Learning HW2 requirement expansion.
-> I try to add an open framework to the normal training process, so that the entire training framework can be highly scalable and easy to use.
-> Users can easily add updated models or modules here and combine them with each other on this basis.
+> This project is an extension of the Institute of 1122 - NCKU Data Science's Deep Learning HW2 requirement. It aims to introduce an open framework to the standard training process, enhancing its scalability and usability. Users can easily integrate updated models or modules into the framework and combine them seamlessly.
 > 
-> On the other hand, I added a simple automatic equipment allocation function to make full use of the computing center's computing performance as much as possible.
+>Additionally, a straightforward automatic equipment allocation feature has been incorporated to maximize the computational performance of the computing center.
 >
 >## Contents:
 >#### [Documentation](#documentation)
@@ -112,12 +110,14 @@ if __name__ == '__main__':
 >- [x] **Continuing training**
 
 ## Concat
->nn6125010@gs.ncku.edu.tw
+> #### nn6125010@gs.ncku.edu.tw
 
 ## Acknowledgement
+
 >DIVANet is built with reference to the code of the following projects
 >* #### [Ultralytics](https://github.com/ultralytics/ultralytics?tab=readme-ov-file)
 >* #### [DCNv4](https://github.com/OpenGVLab/DCNv4)
+>* #### [torch-conv-kan](https://github.com/IvanDrokin/torch-conv-kan)
 >Thanks for their awesome work!
 
 ---
