@@ -108,7 +108,7 @@ if __name__ == '__main__':
 > #### email: nn6125010@gs.ncku.edu.tw
 
 ## 💡Acknowledgement
->DIVANet is built with reference to the code of the following projects
+>DIVANet is built with reference to the code of the following projects:
 >* #### [Ultralytics](https://github.com/ultralytics/ultralytics?tab=readme-ov-file)
 >* #### [DCNv4](https://github.com/OpenGVLab/DCNv4)
 >* #### [torch-conv-kan](https://github.com/IvanDrokin/torch-conv-kan)
