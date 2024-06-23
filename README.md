@@ -8,7 +8,7 @@
 > On the other hand, I added a simple automatic equipment allocation function to make full use of the computing center's computing performance as much as possible.
 > 
 >## Contents:
-> #### [**Documentation**](#documentation)
+>#### [**Documentation**](#documentation)
 > 
 >#### [**Getting started**](#Getting-started)
 > 
