@@ -14,6 +14,10 @@ from divan.scheduler import *
 warnings.simplefilter("ignore")
 logging.getLogger('matplotlib.font_manager').disabled = True
 
+FORMAT = '%(message)s'
+logging.basicConfig(level=logging.DEBUG,
+                    format=FORMAT)
+
 class model_Manager(nn.Module):
     def __init__(self, model_setting,
                  channels='RGB',
