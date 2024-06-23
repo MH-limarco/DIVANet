@@ -10,33 +10,25 @@ base:
 
 ##  divanet.py  ##
 divanet:
-  block_name: "Model_Manager"       #Model Manager
+  block_name: "#Model Manager"        #Model Manager
 
   scales_str: ['n', 's', 'm', 'l', 'x']
 
-  fit_setting_col: ["device",         #device
-                    "amp_use",        #amp use
-                    "Scaler_use",     #scaler use
-                    "CutMix_use",     #CutMix use
-                    "EMA_use",        #EMA use
-                    "label_smooth"    #label smooth rate
-                    ]
-
-  fit_training_col: ["Epoch",         #Epoch
-                     "GPU_mem",       #GPU memory
-                     "Train_loss",    #Train loss
-                     "Size"           #image Size
+  fit_training_col: ["#Epoch",         #Epoch
+                     "#GPU memory",    #GPU memory
+                     "#Train loss",    #Train loss
+                     "#image Size"     #image Size
                     ]
   test_training_col: [ "Val",
-                       "end_step",
-                       "Train_loss",  #Train loss
-                       "Train_acc",   #Train acc
+                       "#End Step",    #End Step
+                       "#Train loss",  #Train loss
+                       "#Train_acc",   #Train acc
                        ]
 
   fit_eval_col: [" ",
-                 "end_step",
-                 "Eval_loss",         #Eval loss
-                 "Eval_acc",          #Eval acc
+                 "#End Step",          #End Step
+                 "#Eval loss",         #Eval loss
+                 "#Eval acc",          #Eval acc
                 ]
 
 ##  parse_task.py  ##
@@ -45,7 +37,7 @@ parse_task:
 
 ## chcek/check_file.py ##
 check_file:
-  block_name: "Data_Inspector"        #Data Inspector
+  block_name: "#Data Inspector"        #Data Inspector
 
   os_dir:  {'posix':"liunx",
             'nt':"windows"
@@ -53,31 +45,28 @@ check_file:
 
 ## module/backbone.py ##
 backbone:
-  block_name: 'Backbone_Manager'      #Backbone Manager
+  block_name: '#Backbone Manager'      #Backbone Manager
 
 
 ## utils/cuda_ready.py ##
 cuda_ready:
-  block_name: "CUDA_Manager"          #CUDA Manager
+  block_name: "#CUDA Manager"          #CUDA Manager
 
   memory_utilization_command: nvidia-smi --query-gpu=memory.free --format=csv
 
 ## utils/dataset.py ##
 dataset:
-  block_name: 'Dataset_Manager'       #Dataset Manager
+  block_name: '#Dataset Manager'       #Dataset Manager
 
   image_dtype: uint8
 
   RGB_index: ['R', 'G', 'B']
 
-  system_info: ["num_workers",        #num workers
-                "RAM_limit"           #RAM limit
+  system_info: ["#num workers",        #num workers
+                "#RAM limit"           #RAM limit
                 ]
 
-  ram_info: ["Limit_usage",             #Available memory
-             "Current_usage",           #Usage memory
-             "Intended_usage"           #Intended memory
+  ram_info: ["#Available memory",      #Available memory
+             "#Usage memory",          #Usage memory
+             "#Intended memory"        #Intended memory
              ]
-
-
-

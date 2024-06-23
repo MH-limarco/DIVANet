@@ -1,0 +1,83 @@
+#
+base:
+  Dataset_PATH: "dataset/"
+
+  cfg_PATH: "cfg/"
+
+  save_PATH: "divan_result/"
+
+  data_name: ['train', 'val', 'test']
+
+##  divanet.py  ##
+divanet:
+  block_name: "#Model Manager"       #Model Manager
+
+  scales_str: ['n', 's', 'm', 'l', 'x']
+
+  fit_setting_col: ["#device",         #device
+                    "#amp use",        #amp use
+                    "#scaler use",     #scaler use
+                    "#CutMix use",     #CutMix use
+                    "EMA_use",        #EMA use
+                    "label_smooth"    #label smooth rate
+                    ]
+
+  fit_training_col: ["Epoch",         #Epoch
+                     "GPU_mem",       #GPU memory
+                     "Train_loss",    #Train loss
+                     "Size"           #image Size
+                    ]
+  test_training_col: [ "Val",
+                       "end_step",
+                       "Train_loss",  #Train loss
+                       "Train_acc",   #Train acc
+                       ]
+
+  fit_eval_col: [" ",
+                 "end_step",
+                 "Eval_loss",         #Eval loss
+                 "Eval_acc",          #Eval acc
+                ]
+
+##  parse_task.py  ##
+parse_task:
+  block_name: "Task_Inspector"
+
+## chcek/check_file.py ##
+check_file:
+  block_name: "Data_Inspector"        #Data Inspector
+
+  os_dir:  {'posix':"liunx",
+            'nt':"windows"
+            }
+
+## module/backbone.py ##
+backbone:
+  block_name: 'Backbone_Manager'      #Backbone Manager
+
+
+## utils/cuda_ready.py ##
+cuda_ready:
+  block_name: "CUDA_Manager"          #CUDA Manager
+
+  memory_utilization_command: nvidia-smi --query-gpu=memory.free --format=csv
+
+## utils/dataset.py ##
+dataset:
+  block_name: 'Dataset_Manager'       #Dataset Manager
+
+  image_dtype: uint8
+
+  RGB_index: ['R', 'G', 'B']
+
+  system_info: ["num_workers",        #num workers
+                "RAM_limit"           #RAM limit
+                ]
+
+  ram_info: ["Limit_usage",             #Available memory
+             "Current_usage",           #Usage memory
+             "Intended_usage"           #Intended memory
+             ]
+
+
+
