@@ -1,4 +1,3 @@
-import torch
 import yaml, os
 
 from divan.utils.utils import *

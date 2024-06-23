@@ -1,7 +1,7 @@
 # DIVANet: Dynamic Interactive Visual Architecture Network
 
 
-TODO:
+
 
 This is presented as my second practical exercise, and feedback or issues are welcome on GitHub.
 
@@ -12,10 +12,6 @@ This is presented as my second practical exercise, and feedback or issues are we
 
 
 ## <div align="center">👟Open modular framework👟</div>
-<p ="center">
-  <img src="assets/TODO" alt="erf" width="100%">
-</p>
-
 
 ## <div align="center">📔Documentation📔</div>
 
@@ -25,14 +21,21 @@ See below for a quickstart and usage example
 <summary>Preliminaries</summary>
 
 ### Environment
-This project is based on a [**Python>=3.11**](https://www.python.org/) environment with Windows 11 & Ubuntu 20.04.
+This project is based on a [**Python>=3.11**](https://www.python.org/) and cuda>=11.8 environment with Windows 11 & Ubuntu 20.04.
 
 ### Package install
 ```bash
-TODO
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install tqdm
+pip install pandas
+pip install numpy
+pip install psutil
+
+#Optional
+pip install timm
 ```
 
-For alternative installation methods including [Conda](https://anaconda.org/conda-forge/pandas), and Git.
+For alternative installation methods including [Conda](https://anaconda.org/conda-forge/pandas).
 
 </details>
 
@@ -42,93 +45,61 @@ For alternative installation methods including [Conda](https://anaconda.org/cond
 <summary>Usage</summary>
 
 
-### Python - build model with yaml
-
-TODO
-
+### Python - Training
 ```python
 from divan import DIVAN
 
 if __name__ == '__main__':
-    model = DIVAN()
-    model.fit("C2f.yaml",
-              "dataset",
-              epochs=10,
-              )
+    model = DIVAN('resnet34.yaml')
+    model.fit('dataset', 
+              epochs=100,
+              warnup_step=5,
+              endstep_epochs=20,
+              endstep_patience=3,
+              endstep_factor=0.5,
+              batch_size=128,
+              cutmix_p=0,
+              label_smoothing=0.0,
+              lr=0.0005,
+              early_stopping=48,
+              RAM=True)
 ```
 
-### Python - read model with torchvision
-
-TODO
-
+### Python - Continuing training
 ```python
-from divan import DIVAN_torch
+from divan import DIVAN
 
 if __name__ == '__main__':
-    model = DIVAN_torch()
-    model.fit("resnet34",
-              "dataset",
-              epochs=10,
-              )
+    model = DIVAN('divan_result/train/resnet34-1/weight/last.pt')
+    model.fit('dataset', 
+              epochs=100,
+              warnup_step=5,
+              endstep_epochs=20,
+              endstep_patience=3,
+              endstep_factor=0.5,
+              batch_size=128,
+              cutmix_p=0,
+              label_smoothing=0.0,
+              lr=0.0005,
+              early_stopping=48,
+              RAM=True)
 ```
-
 </details>
 
-## <div align="center">🔖Introduction to structure🔖</div>
 
-|                |                                                                       instruction                                                                       |
-|:--------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------:|
-|      TODO      |                                            TODO                                          |
-| TODO |  TODO  |
-|  TODO   |          TODO                                       |
-
-
-## <div align="center">⚒️Architecture example⚒️</div>
-<p = "center">
-  <img src="assets/TODO" alt="erf" width="100%">
-</p>
-
-#### Here is the architecture example for `cfg/C2f.yaml`.
-You can build your own structure.yaml according to your requirements
-
-## <div align="center">📋Customize your process📋</div>
-<details open>
-<summary>setting.yaml</summary>
-
-### Create a setting yaml.
-
-You need to customize your configuration file so that the script knows where your architecture files are, where to input and output, and the settings for execution.
-
-|                 | example  | definition                                                                            |
-|:---------------:|:--------:|:--------------------------------------------------------------------------------------|
-|      TODO       | C2f.yaml | Architecture file PATH                                                                |
-|      TODO       |   TODO   | TODO                                                                                  |
-|      TODO       |   TODO   | TODO                                                                                  |
-|      TODO       |   TODO   | TODO                                                                                  |
-|      TODO       |   TODO   | TODO                                                                                  |
-
-</details>
-
+## <div align="center">📋API Introduction📋</div>
 
 <details open>
-<summary>structure.yaml</summary>
-           - [-2, ot_df_concat, []]...                | Output-step blueprint settings    |
 
-#### blueprint-format
+### [DIVAN](divan/readme.md)
 
-```angular2html
-blueprint-format
-- [from_idx, n, module, args] #idx
-```
+### [Configuration](cfg/readme.md)
 
-#### blueprint-idx
-
-```angular2html
-from_idx:
-- -1: pass value
-- other: module idx
-```
-
-For existing modules, you can learn more by visiting the [[**Doc**]](assets%2FREADME.md).
+### [Setting](divan/utils/config_file/readme.md)
 
 </details>
+
+## <div align="center">⚒️TODO⚒️</div>
+- [ ] **wandb support**
+- [ ] **Distributed Data Parallel**
+- [x] **Continuing training**

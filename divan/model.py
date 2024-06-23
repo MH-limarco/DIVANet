@@ -1,10 +1,5 @@
-import torch, os, random, warnings
+import torch, random, warnings
 import torch.nn as nn
-import torch.optim as optim
-import torch.distributed as dist
-import torch.multiprocessing as mp
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.data import DataLoader, TensorDataset, DistributedSampler
 from torch.optim.swa_utils import AveragedModel, SWALR
 
 from psutil import cpu_count

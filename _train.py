@@ -1,9 +1,9 @@
-from divan import *
+from divan import DIVAN
 
 if __name__ == '__main__':
-    FORMAT = '%(message)s'
-    logging.basicConfig(level=logging.DEBUG,
-                        format=FORMAT)
+    #FORMAT = '%(message)s'
+    #logging.basicConfig(level=logging.DEBUG,
+    #                    format=FORMAT)
 
     model = DIVAN('Multi_channel.yaml')
     model.fit('dataset', 10, #100

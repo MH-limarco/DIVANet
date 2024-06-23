@@ -1,16 +1,13 @@
 import os, subprocess, zipfile, logging
+from divan.utils.config import *
+__all__ = ['check_data']
 
 http = 'https://cchsu.info/files/images.zip'
 
-os_dir = {'posix':'liunx',
-          'nt':'windows'
-          }
+config_cf = read_config(__file__)
+block_name, os_dir = config_cf["block_name"], config_cf["os_dir"]
 
-__all__ = ['check_file']
-
-block_name = 'test_file'
-
-def check_file(data_name, _http=http):
+def check_data(data_name: str, _http: str = http) -> bool:
     logging.info(f'OS: {os_dir[os.name]}')
     logging.info(f'{block_name}: Dataset name - {data_name}')
 

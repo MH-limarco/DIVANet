@@ -10,6 +10,7 @@ import numpy as np
 from tqdm import tqdm
 from os import path
 
+from divan import check
 from divan.utils.config import *
 from divan.utils.log import *
 from divan.utils.transformer import *
@@ -135,6 +136,7 @@ class Dataset_Manager:
 
         apply_args(self)
         apply_config(self, __file__)
+        check.check_file.check_data(dataset_path)
         self.mem = virtual_memory()
         self.RAM = False if not RAM else 'auto'
         self.collate_fn_use = True
