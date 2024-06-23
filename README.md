@@ -140,9 +140,13 @@ if __name__ == '__main__':
 
 ## 📃TODO
 ✅ **Continuing training**  
+
 📝 **wandb support**  
+
 📝 **Unified log management**  
+
 📝 **Distributed Data Parallel**  
+
 📝 **Separate testing function**  
 
 ---
