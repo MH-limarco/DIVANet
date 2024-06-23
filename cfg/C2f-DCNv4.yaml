@@ -11,9 +11,9 @@ scales:
 
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2     #1
-  - [-1, 1, Conv, [128, 3, 2]] # 0-P1/2     #1
-  - [-1, 1, C2f_DCNv4, [128, True]]   # 2       #8
+  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
+  - [-1, 1, C2f_DCNv4, [128, True]]   # 2
 
 head:
   - [-1, 1, Classify, [nc]] # Classify    #1
