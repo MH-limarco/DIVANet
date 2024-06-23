@@ -94,12 +94,13 @@ if __name__ == '__main__':
 ## <div align="center">📋API Introduction📋</div>
 
 <details open>
+<summary>Menu</summary>
 
->### [DIVAN](divan)
->
->### [Configuration](cfg)
->
->### [Setting](divan/utils)
++ #### [DIVAN](divan)
+
++ #### [Configuration](cfg)
+
++ #### [Setting](divan/utils)
 
 </details>
 
