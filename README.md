@@ -99,7 +99,7 @@ if __name__ == '__main__':
 >
 >### [Configuration](cfg/)
 >
->### [Setting](divan/utils/config_file/)
+>### [Setting](divan/utils/)
 
 </details>
 
