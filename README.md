@@ -21,7 +21,7 @@
 <summary>🙈Preliminaries</summary>
 
 ### 🚩Environment
->This project is based on a [**Python>=3.11**](https://www.python.org/) and [CUDA Toolkit>=11.8](https://developer.nvidia.com/cuda-toolkit) environment with Windows 11 & Ubuntu 20.04.
+>This project is based on a [**Python>=3.11**](https://www.python.org/) and [**CUDA Toolkit>=11.8**](https://developer.nvidia.com/cuda-toolkit) environment with Windows 11 & Ubuntu 20.04.
 
 ### 💻Package install
 ```bash
