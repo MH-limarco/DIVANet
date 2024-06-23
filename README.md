@@ -6,13 +6,13 @@
 > Users can easily add updated models or modules here and combine them with each other on this basis.
 > 
 > On the other hand, I added a simple automatic equipment allocation function to make full use of the computing center's computing performance as much as possible.
-> 
+>
 >## Contents:
->#### [**Documentation**](#documentation)
+>#### [Documentation](#documentation)
 > 
->#### [**Getting started**](#Getting-started)
+>#### [Getting started](##getting-started)
 > 
->#### [**API Introductione**](#API-Introduction)
+>#### [API Introductione](#API-Introduction)
 
 
 ## <div align="center">📔Documentation📔</div>
