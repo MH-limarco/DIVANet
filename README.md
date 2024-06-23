@@ -10,7 +10,7 @@
 >## Contents:
 >#### [Documentation](#documentation)
 > 
->#### [Getting started](##getting-started)
+>#### [Getting started](##getting-started-1)
 > 
 >#### [API Introductione](#API-Introduction)
 
