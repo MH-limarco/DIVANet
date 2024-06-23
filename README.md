@@ -15,7 +15,7 @@
 
 ## <div align="center">📔Documentation📔</div>
 
-#### See below for a quickstart and usage example
+#### See below for a quickstart
 
 <details open>
 <summary>🙈Preliminaries</summary>
@@ -42,7 +42,7 @@ python setup.py build install
 </details>
 
 ## <div align="center">👐Getting started👐</div>
-
+#### See below for a usage example
 <details open>
 <summary>🏃Usage</summary>
 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
 
 ## <div align="center">📋API Introduction📋</div>
-
+#### Each part is described in detail as follows:
 <details open>
 <summary>📑Menu</summary>
 
