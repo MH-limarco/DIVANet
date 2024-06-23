@@ -85,6 +85,31 @@ if __name__ == '__main__':
               early_stopping=48,
               RAM=True)
 ```
+### Python - Training(Custom-Model)
+>  ⚠️In custom models, you can append "-{scale name}" to the YAML file name to specify model parameter scaling.  
+>
+>  **support scale: "n", "s", "m", "l", "x"**  
+>  For example, use "C2f-DCNv4-x.yaml".  
+
+```python
+from divan import DIVAN
+
+if __name__ == '__main__':
+    model = DIVAN('C2f-DCNv4-x.yaml')
+    model.fit('dataset', 
+              epochs=100,
+              warnup_step=5,
+              endstep_epochs=20,
+              endstep_patience=3,
+              endstep_factor=0.5,
+              batch_size=128,
+              cutmix_p=0,
+              label_smoothing=0.0,
+              lr=0.0005,
+              early_stopping=48,
+              RAM=True)
+```
+
 >#### ⚠️After the training is completed, the training process information and parameters will be recorded in:
 >divan_result/train/{yaml_name}-{id} (e.g: divan_result/train/resnet34-1)
 

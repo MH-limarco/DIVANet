@@ -2,7 +2,6 @@ from divan import DIVAN
 
 if __name__ == '__main__':
     model = DIVAN('resnet34.yaml',
-                  channels='auto'
                   )
     #model = DIVAN('divan_result/train/resnet34-1/weight/last.pt')
     model.fit('dataset',

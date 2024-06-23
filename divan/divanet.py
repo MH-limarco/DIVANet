@@ -420,8 +420,14 @@ class model_Manager(nn.Module):
 
 class DIVAN(model_Manager):
     def _read_model(self):
-        self.yaml = self._read_yaml(self.model_setting.split('.yaml')[0])
+        name = self.model_setting.split('.yaml')[0]
+        if name[-2] == '-' and name[-1] in self.scales_str:
+            name, scale = name[:-2], name[-1]
+        self.yaml = self._read_yaml(name)
         self.yaml["nc"] = self.num_class if hasattr(self, "num_class") else self.yaml["nc"]
+        if 'scale' in locals():
+            self.yaml["scale"] = scale
+
         intput_channels = len(self.channels) if self.channels != 'auto' else self.channels
 
         self.model = Divanet_model(self.yaml, intput_channels)

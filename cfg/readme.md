@@ -92,4 +92,27 @@ backbone:
 head:
   - [-1, 1, Classify, [nc]] # Classify    #1
 ```
+### YAML - C2f with DCNv4
+```yaml
+# Parameters
+nc: 1000 # number of classes
+activation: Mish
+scales:
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 1024]
+  l: [1.00, 1.00, 1024]
+  x: [1.00, 1.25, 1024]
+
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
+  - [-1, 1, C2f_DCNv4, [128, True]]   # 2
+
+head:
+  - [-1, 1, Classify, [nc]] # Classify   
+```
+
 ---
