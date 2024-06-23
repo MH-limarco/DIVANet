@@ -17,7 +17,7 @@
 
 ## <div align="center">📔Documentation📔</div>
 
->See below for a quickstart and usage example
+#### See below for a quickstart and usage example
 
 <details open>
 <summary>Preliminaries</summary>
@@ -40,9 +40,7 @@ pip install timm
 cd extra_modules/DCNv4_op
 python setup.py build install
 ```
-
 >For alternative installation methods including [Conda](https://anaconda.org/conda-forge/pandas).
-
 </details>
 
 ## <div align="center">👐Getting started👐</div>
