@@ -116,11 +116,11 @@ if __name__ == '__main__':
 >Thanks for their awesome work!
 
 ## TODO
-- [x] **Continuing training**
-- [ ] **wandb support**
-- [ ] **Unified log management**
-- [ ] **Distributed Data Parallel**
-- [ ] **Separate testing function**
+☑ **Continuing training**  
+☐ **wandb support**  
+☐ **Unified log management**  
+☐ **Distributed Data Parallel**  
+☐ **Separate testing function**  
 
 ---
 This is presented as my second practical exercise, and feedback or issues are welcome on GitHub.
