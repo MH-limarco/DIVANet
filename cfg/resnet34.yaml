@@ -11,4 +11,4 @@ scales:
 
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, vision_backbone, ['resnet34']] # 0-P1/2
+  - [-1, 1, vision_backbone, ['resnet34']]
