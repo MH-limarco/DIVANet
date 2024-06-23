@@ -26,6 +26,6 @@ use_version = "base"
 ---
 
 ## **config transform**
-> The standard image augmentation pipeline of DIVANet is initialized in [cfg_transforms.py](config_file/cfg_transforms.py)  
+> The standard image augmentation pipeline of DIVANet is initialized in [cfg_transforms.py](config_file/)  
 > Users can modify their own augmentation pipeline here.
 
