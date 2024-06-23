@@ -21,7 +21,7 @@
 <summary>Preliminaries</summary>
 
 ### Environment
->This project is based on a [**Python>=3.11**](https://www.python.org/) and cuda>=11.8 environment with Windows 11 & Ubuntu 20.04.
+>This project is based on a [**Python>=3.11**](https://www.python.org/) and [CUDA Toolkit>=11.8](https://developer.nvidia.com/cuda-toolkit) environment with Windows 11 & Ubuntu 20.04.
 
 ### Package install
 ```bash
@@ -86,7 +86,7 @@ if __name__ == '__main__':
               RAM=True)
 ```
 >#### After the training is completed, the training process information and parameters will be recorded in:
->divan_result/train/{yaml_name}-{id}
+>divan_result/train/{yaml_name}-{id} (e.g: divan_result/train/resnet34-1)
 
 </details>
 
@@ -95,19 +95,13 @@ if __name__ == '__main__':
 
 <details open>
 
->### [DIVAN](divan/)
+>### [DIVAN](divan)
 >
->### [Configuration](cfg/)
+>### [Configuration](cfg)
 >
->### [Setting](divan/utils/)
+>### [Setting](divan/utils)
 
 </details>
-
-## TODO
->- [ ] **wandb support**
->- [ ] **Distributed Data Parallel**
->- [ ] **Separate testing function**
->- [x] **Continuing training**
 
 ## Concat
 > #### nn6125010@gs.ncku.edu.tw
@@ -119,6 +113,13 @@ if __name__ == '__main__':
 >* #### [DCNv4](https://github.com/OpenGVLab/DCNv4)
 >* #### [torch-conv-kan](https://github.com/IvanDrokin/torch-conv-kan)
 >Thanks for their awesome work!
+
+## TODO
+- [x] **Continuing training**
+- [ ] **wandb support**
+- [ ] **Unified log management**
+- [ ] **Distributed Data Parallel**
+- [ ] **Separate testing function**
 
 ---
 This is presented as my second practical exercise, and feedback or issues are welcome on GitHub.
