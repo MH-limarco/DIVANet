@@ -17,9 +17,12 @@ logging.getLogger('matplotlib.font_manager').disabled = True
 class model_Manager(nn.Module):
     def __init__(self, model_setting,
                  channels='RGB',
+                 random_p=0.8,
+                 fix_mean=False,
+                 cut_channels=False,
                  amp=True,
                  device='cuda',
-                 seed=123
+                 seed=0
                  ):
         super().__init__()
         apply_config(self, __file__)
@@ -54,17 +57,13 @@ class model_Manager(nn.Module):
             label_path=["train.txt", "val.txt", "test.txt"],
             size=224,
             batch_size=128,
+            use_compile=False,
+            #optim
             lr=1e-3,
-            early_stopping=15,
-            label_smoothing=0.1,
             weight_decay=0.01,
-            pin_memory=False,
-            shuffle=True,
-            silence=False,
-            fix_mean=False,
-            cut_channels=False,
-            warnup_start_factor=0.1,
+            # scheduler
             warnup_step=0,
+            warnup_start_factor=0.1,
             T_0=3,
             T_mult=2,
             eta_min=0,
@@ -72,13 +71,18 @@ class model_Manager(nn.Module):
             endstep_start_factor=1,
             endstep_patience=5,
             endstep_factor=0.1,
-            use_compile=False,
-            random_p=0.8,
-            num_workers=-1,
-            RAM='auto',
+            #train
+            early_stopping=15,
+            label_smoothing=0.1,
+            silence=False,
+            #dataset
             cutmix_p=1,
+            pin_memory=False,
+            shuffle=True,
+            RAM=True,
             ncols=90,
             RAM_lim=0.925,
+            num_workers=-1,
             ):
         apply_args(self)
         self._build_dataset()
