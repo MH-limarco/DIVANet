@@ -110,8 +110,7 @@ if __name__ == '__main__':
               RAM=True)
 ```
 
->#### ⚠️After the training is completed, the training process information and parameters will be recorded in:
->divan_result/train/{yaml_name}-{id} (e.g: divan_result/train/resnet34-1)
+> ⚠️ After the training is completed, the training process information and parameters will be recorded in: **divan_result/train/{yaml_name}-{id}** (e.g., **divan_result/train/resnet34-1**).
 
 </details>
 
