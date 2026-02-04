@@ -7,9 +7,11 @@ try:
     from DCNv4.modules.dcnv4 import DCNv4 as dcnv4
 except ImportError as e:
     pass
-
 __all__ = ["Conv", "DCNv4", "MLPLayer", "Concat"]
+from divan.utils import BLOCKS
 
+
+@BLOCKS.register_module()
 class Conv(nn.Module):
     default_act = Activations('SiLU')(inplace=True)
     def __init__(self,
@@ -36,6 +38,7 @@ class Conv(nn.Module):
         return self.activation(self.bn(self.conv(x)))
 
 
+@BLOCKS.register_module()
 class DCNv4(nn.Module):
     def __init__(self,
                  in_planes,
@@ -72,6 +75,8 @@ class DCNv4(nn.Module):
         x = self.activation(self.bn(x))
         return x
 
+
+@BLOCKS.register_module()
 class MLPLayer(nn.Module):
     r""" MLP layer of InternImage
     Args:
@@ -106,6 +111,8 @@ class MLPLayer(nn.Module):
         x = self.drop(x)
         return x
 
+
+@BLOCKS.register_module()
 class Concat(nn.Module):
     def __init__(self, dimension=1):
         """Concatenates a list of tensors along a specified dimension."""

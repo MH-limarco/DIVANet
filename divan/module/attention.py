@@ -1,12 +1,13 @@
-from divan.module.utils import *
-from divan.module.conv import *
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ["ChannelAttention", "SpatialAttention", "CBAM", "PSA"]
+from divan.module.utils import *
+from divan.module.conv import *
+from divan.utils import BLOCKS
 
+
+@BLOCKS.register_module()
 class ChannelAttention(nn.Module):
     def __init__(self,
                  in_channels,
@@ -61,6 +62,8 @@ class ChannelAttention(nn.Module):
             scale = scale.unsqueeze(2).unsqueeze(3).expand_as(x)
         return x * scale
 
+
+@BLOCKS.register_module()
 class SpatialAttention(nn.Module):
     def __init__(self, activation=False, kernel_size=7):
         super(SpatialAttention, self).__init__()
@@ -79,6 +82,8 @@ class SpatialAttention(nn.Module):
         scale = F.sigmoid(x_out)
         return x * scale
 
+
+@BLOCKS.register_module()
 class CBAM(nn.Module):
     def __init__(self,
                  in_channels,
@@ -109,6 +114,8 @@ class CBAM(nn.Module):
         x_out = self.Sequential(x)
         return x_out
 
+
+@BLOCKS.register_module()
 class QKV(nn.Module):
     def __init__(self, dim, num_heads=8,
                  attn_ratio=0.5):
@@ -138,7 +145,7 @@ class QKV(nn.Module):
         return x
 
 
-
+@BLOCKS.register_module()
 class PSA(nn.Module):
     def __init__(self, c1, c2, e=0.5):
         super().__init__()

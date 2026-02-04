@@ -5,9 +5,12 @@ import torch.nn.functional as F
 from divan.module.kan_convs import *
 from divan.module.utils import *
 from divan.module.conv import *
+from divan.utils import BLOCKS
 
 __all__ = ["Pool_Conv", "C1", "C2", "C2f", "C3", "C2f_KAN", "C3_KAN"]
 
+
+@BLOCKS.register_module()
 class Pool_Conv(nn.Module):
     def __init__(self,
                  hidden__channels=16,
@@ -48,7 +51,7 @@ class Pool_Conv(nn.Module):
         return y
 
 
-
+@BLOCKS.register_module()
 class C1(nn.Module):
     """CSP Bottleneck with 1 convolution."""
 
@@ -64,6 +67,7 @@ class C1(nn.Module):
         return self.m(y) + y
 
 
+@BLOCKS.register_module()
 class C2(nn.Module):
     def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, replace_mode=0, g=1, e=0.5):
         """Initializes the CSP Bottleneck with 2 convolutions module with arguments ch_in, ch_out, number, shortcut,
@@ -83,9 +87,11 @@ class C2(nn.Module):
         a, b = self.cv1(x).chunk(2, 1)
         return self.cv2(torch.cat((self.m(a), b), 1))
 
+
+@BLOCKS.register_module()
 class C2f(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
-    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=False, replace_mode=0, g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, shortcut=False, _conv=Conv, replace_mode=0, g=1, e=0.5):
         """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
         expansion.
         """
@@ -104,8 +110,10 @@ class C2f(nn.Module):
         y.extend(m(y[-1]) for m in self.m)
         return self.cv2(torch.cat(y, 1))
 
+
+@BLOCKS.register_module()
 class C3(nn.Module):
-    def __init__(self, c1, c2, n=1, _conv=Conv, shortcut=True, replace_mode=0, g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, shortcut=True, _conv=Conv, replace_mode=0, g=1, e=0.5):
         """Initialize the CSP Bottleneck with given channels, number, shortcut, groups, and expansion values."""
         super().__init__()
         assert 0 <= replace_mode <= 2
@@ -121,6 +129,8 @@ class C3(nn.Module):
         """Forward pass through the CSP bottleneck with 2 convolutions."""
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), 1))
 
+
+@BLOCKS.register_module()
 class C3x(C3):
     """C3 module with cross-convolutions."""
     def __init__(self, c1, c2, n=1, shortcut=True, g=1, e=0.5):
@@ -129,6 +139,8 @@ class C3x(C3):
         self.c_ = int(c2 * e)
         self.m = nn.Sequential(*(Bottleneck(self.c_, self.c_, shortcut, g, k=((1, 3), (3, 1)), e=1) for _ in range(n)))
 
+
+@BLOCKS.register_module()
 class Bottleneck(nn.Module):
     """Standard bottleneck."""
     def __init__(self, c1, c2, _conv, replace_mode=0, shortcut=True, g=1, k=(3, 3), e=0.5):
@@ -156,8 +168,33 @@ class Bottleneck(nn.Module):
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
+
+@BLOCKS.register_module()
+class SPPF(nn.Module):
+    """Spatial Pyramid Pooling - Fast (SPPF) layer for YOLOv5 by Glenn Jocher."""
+
+    def __init__(self, c1, c2, k=5):
+        """
+        Initializes the SPPF layer with given input/output channels and kernel size.
+
+        This module is equivalent to SPP(k=(5, 9, 13)).
+        """
+        super().__init__()
+        c_ = c1 // 2  # hidden channels
+        self.cv1 = Conv(c1, c_, 1, 1)
+        self.cv2 = Conv(c_ * 4, c2, 1, 1)
+        self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
+
+    def forward(self, x):
+        """Forward pass through Ghost Convolution block."""
+        y = [self.cv1(x)]
+        y.extend(self.m(y[-1]) for _ in range(3))
+        return self.cv2(torch.cat(y, 1))
+
+
+@BLOCKS.register_module()
 class Bottleneck_KAN(nn.Module):
-    def __init__(self, c1, c2, _kan, shortcut=True, g=1, k=(3, 3), e=0.5):
+    def __init__(self, c1, c2, shortcut=True, _kan=FastKANConv, g=1, k=(3, 3), e=0.5):
         super().__init__()
         c_ = int(c2 * e)  # hidden channels
 
@@ -169,18 +206,21 @@ class Bottleneck_KAN(nn.Module):
     def forward(self, x):
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
-class C2f_KAN(C2f):
-    def __init__(self, c1, c2, n=1, _conv=FastKANConv, shortcut=False, g=1, e=0.5):
-        super().__init__(c1, c2, n, _conv,shortcut, g, e)
-        self.m = nn.ModuleList(Bottleneck_KAN(self.c, self.c, _conv, shortcut, g, k=(3, 3), e=1.0) for _ in range(n))
 
+@BLOCKS.register_module()
+class C2f_KAN(C2f):
+    def __init__(self, c1, c2, n=1, shortcut=False, _conv=FastKANConv, g=1, e=0.5):
+        super().__init__(c1, c2, n, _conv,shortcut, g, e)
+        self.m = nn.ModuleList(Bottleneck_KAN(self.c, self.c, shortcut, _conv, g, k=(3, 3), e=1.0) for _ in range(n))
+
+
+@BLOCKS.register_module()
 class C3_KAN(C3):
-    def __init__(self, c1, c2, n=1, _conv=FastKANConv, shortcut=False, g=1, e=0.5):
+    def __init__(self, c1, c2, n=1, shortcut=False, _conv=FastKANConv, g=1, e=0.5):
         super().__init__(c1, c2, n, _conv, shortcut, g, e)
         c_ = int(c2 * e)  # hidden channels
         self.m = nn.Sequential(*(Bottleneck_KAN(c_, c_, _conv, shortcut, g, k=(1, 3), e=1.0) for _ in range(n)))
 
-#class Bottleneck_InternImage(nn.Module)
 
 if __name__ == '__main__':
 

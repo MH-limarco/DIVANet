@@ -1,2 +1,2 @@
-from divan.check.check_file import *
+#from divan.check.check_file import *
 

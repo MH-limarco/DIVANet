@@ -2,11 +2,14 @@ import torch
 from torch import nn
 
 from divan.module.conv import *
-
+from divan.utils import BLOCKS
 __all__ = ["Classify"]
+
+
+@BLOCKS.register_module()
 class Classify(nn.Module):
     """YOLOv8 classification head, i.e. x(b,c1,20,20) to x(b,c2)."""
-
+    task_tag = 'classify'
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1):
         """Initializes YOLOv8 classification head with specified input and output channels, kernel size, stride,
         padding, and groups.
@@ -26,3 +29,4 @@ class Classify(nn.Module):
             x = x[0]
         x = self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
         return x if self.training else x.softmax(1)
+

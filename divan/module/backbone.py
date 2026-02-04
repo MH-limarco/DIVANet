@@ -9,9 +9,9 @@ from divan.module.block import *
 from divan.module.conv import *
 from divan.module.utils import *
 from divan.module.attention import *
-from divan.module.head import *
+from divan.module.classify_head import *
 
-from divan.utils.config import *
+from divan.utils import BLOCKS
 
 try:
     import timm
@@ -20,8 +20,10 @@ except:
 
 __all__ = ["vision_backbone", "timm_backbone"]
 
-backbone_config = read_config(__file__)
+#backbone_config = read_config(__file__)
 
+
+@BLOCKS.register_module()
 def vision_backbone(model, weights=False, in_channels=3, num_class=1000):
     if type(model) == str:
         try:
@@ -46,6 +48,8 @@ def vision_backbone(model, weights=False, in_channels=3, num_class=1000):
     model = fclayer_resize(model, num_class)
     return model
 
+
+@BLOCKS.register_module()
 def timm_backbone(model, weights=False, in_channels=3, num_class=1000):
     try:
         model = timm.create_model(model, pretrained=weights)
@@ -64,10 +68,3 @@ def timm_backbone(model, weights=False, in_channels=3, num_class=1000):
     model = inlayer_resize(model, in_channels)
     model = fclayer_resize(model, num_class)
     return model
-
-if __name__ == '__main__':
-    FORMAT = '[%(levelname)s] | %(asctime)s | %(message)s'
-    logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt='%Y-%m-%d %H:%M')
-
-
-

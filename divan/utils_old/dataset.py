@@ -4,7 +4,7 @@ from torchvision.transforms import v2
 from torchvision.io import read_image
 import torch
 
-from psutil import virtual_memory, cpu_count
+#from psutil import virtual_memory, cpu_count
 import logging, math
 import numpy as np
 from tqdm import tqdm

@@ -1,5 +1,5 @@
 import os, subprocess, zipfile, logging
-from divan.utils.config import *
+#from divan.utils.config import *
 __all__ = ['check_data']
 
 http = 'https://cchsu.info/files/images.zip'
